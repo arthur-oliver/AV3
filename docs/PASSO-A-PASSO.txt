@@ -1,0 +1,276 @@
+=====================================================================
+ GREENCODE AV3 - PASSO A PASSO PARA RODAR O PROJETO
+=====================================================================
+
+RESUMO (depois de instalar Node.js e MySQL e criar o banco "greencode_av3"):
+
+     git clone https://github.com/arthur-oliver/AV3.git
+     cd AV3\greencode-av3       (Linux: cd AV3/greencode-av3)
+     copy .env.example .env      (e editar a senha do MySQL no .env)
+     npm install
+     npm run setup               (cria as tabelas e os dados de exemplo)
+     npm test                    (testes automatizados)
+     npm run dev                 (sobe a API em http://127.0.0.1:3000)
+
+Os detalhes de cada etapa estão abaixo.
+
+---------------------------------------------------------------------
+ ANTES DE COMEÇAR: BAIXAR O PROJETO E ENTRAR NA PASTA DO CÓDIGO
+---------------------------------------------------------------------
+ 1) Baixe o projeto do GitHub (com o Git instalado):
+
+        git clone https://github.com/arthur-oliver/AV3.git
+
+    (ou, no site do repositório, botão "Code" > "Download ZIP" e extraia).
+
+ 2) Entre na pasta greencode-av3, que fica DENTRO da pasta baixada:
+
+        Windows (cmd):    cd AV3\greencode-av3
+        Ubuntu/Linux:     cd AV3/greencode-av3
+
+ Todos os comandos dos passos seguintes (npm install, npm run setup,
+ npm test, npm run dev...) devem ser executados nesta pasta, a que
+ contém o arquivo package.json. A documentação (README e pasta docs)
+ fica fora dela, na raiz do repositório.
+
+---------------------------------------------------------------------
+ 0. O QUE PRECISA ESTAR INSTALADO
+---------------------------------------------------------------------
+ - Node.js 20 ou superior   (confira com:  node -v)
+ - Git                       (para baixar o projeto do GitHub)
+ - MySQL Server 8.0.16 ou superior, ligado, com a senha do usuário root
+   (o MySQL Workbench é apenas o programa para visualizar/gerenciar)
+
+ Funciona em Windows 10+ e Ubuntu 24.04+ (e derivados).
+ Abra o terminal (cmd/PowerShell no Windows, terminal no Ubuntu) DENTRO
+ da pasta greencode-av3 (a que contém o arquivo package.json).
+
+---------------------------------------------------------------------
+ 1. CRIAR O BANCO DE DADOS (MySQL Workbench)
+---------------------------------------------------------------------
+ 1.1 Abra o MySQL Workbench e conecte na sua instância local.
+ 1.2 Abra uma aba de SQL e execute:
+
+        CREATE DATABASE greencode_av3
+          CHARACTER SET utf8mb4
+          COLLATE utf8mb4_unicode_ci;
+
+ 1.3 Confira se o banco "greencode_av3" apareceu na lista de schemas
+     (clique em atualizar).
+
+---------------------------------------------------------------------
+ 2. CONFIGURAR O ARQUIVO .env
+---------------------------------------------------------------------
+ 2.1 Copie o modelo:
+
+        Windows (cmd):    copy .env.example .env
+        Ubuntu/Linux:     cp .env.example .env
+
+ 2.2 Abra o arquivo .env em um editor e ajuste:
+
+        DATABASE_URL="mysql://root:SUA_SENHA@localhost:3306/greencode_av3"
+        PORT=3000
+        JWT_SECRET="uma-frase-longa-e-aleatoria-com-mais-de-32-caracteres"
+        JWT_EXPIRES_IN=1h
+
+     - Troque SUA_SENHA pela senha do root do MySQL.
+     - Se a senha tiver caracteres especiais (@ : / # ?), troque cada
+       um pelo código da URL: @ = %40   : = %3A   / = %2F   # = %23
+     - Se o MySQL usa outra porta, troque 3306.
+     - O JWT_SECRET PRECISA ter 32 ou mais caracteres.
+
+---------------------------------------------------------------------
+ 3. INSTALAR AS DEPENDÊNCIAS
+---------------------------------------------------------------------
+        npm install
+
+ Resultado esperado: instala os pacotes e, no final, executa
+ "prisma generate" sem erros. (Leva alguns minutos na primeira vez.
+ É necessário ter internet.)
+
+---------------------------------------------------------------------
+ 4. CRIAR AS TABELAS E OS DADOS DE EXEMPLO
+---------------------------------------------------------------------
+        npm run setup
+
+ Esse comando faz duas coisas:
+   a) cria as tabelas no banco (migração do Prisma);
+   b) carrega os dados de exemplo (seed).
+
+ Resultado esperado (no final):
+   "Seed concluído: 5 usuários, 3 organizações, 5 lotes, 34 equipamentos."
+
+ Confira no MySQL Workbench (clique direito no schema > atualizar):
+ devem existir 10 tabelas (+ _prisma_migrations):
+   usuarios, organizacoes, contratos, lotes, equipamentos,
+   movimentacoes, journal_transacoes, chaves_api,
+   tarefas_relatorio, analises_resultado
+
+ Pode ser executado mais de uma vez sem duplicar dados.
+
+ Usuários criados:
+   superusuario / Super@123   (SUPERUSUARIO: único; acesso total e dono das contas)
+   admin     / Admin@123      (ADMINISTRADOR)
+   operador  / Operador@123   (OPERADOR_CADASTRO)
+   gestor    / Gestor@123     (GESTOR_ALMOXARIFADO)
+   auditor   / Auditor@123    (AUDITOR)
+
+---------------------------------------------------------------------
+ 5. TESTES AUTOMATIZADOS
+---------------------------------------------------------------------
+
+ Com o banco criado e populado (passo 4):
+
+        npm test
+
+ O terminal lista CADA teste, um por linha, com um ✓ (passou) na frente,
+ agrupados por arquivo, por exemplo:
+
+        ✓ tests/unit/usuarios.test.ts > regras do superusuário > ...
+        ✓ tests/integration/fluxo.test.ts > organizações e contratos > ...
+
+ No final aparece o resumo ("Test Files" e "Tests"). Esperado: todos
+ passando, sem nenhum ✗ (falha). Um teste marcado com ↓ foi pulado de
+ propósito: acontece só quando o banco já tem usuários extras do mesmo
+ papel, e isso não é erro.
+
+ O comando roda dois grupos (cada um também pode ser rodado sozinho):
+
+   npm run test:unit          Regras puras, sem banco: CNPJ, data de entrada,
+                              estado físico, transição de status, "sempre ao
+                              menos 1 usuário ativo por papel", superusuário
+                              e bloqueio de login por tentativas.
+
+   npm run test:integration   A API de verdade contra o MySQL: login e
+                              permissões por papel, organizações e contratos,
+                              lotes, triagem, rastreabilidade, relatórios,
+                              auditoria e as regras de correção/exclusão.
+
+ Os testes criam registros novos (nomes e CNPJs aleatórios) e desativam os
+ usuários temporários no final. Para voltar ao estado inicial:
+
+        npm run db:reset            (APAGA tudo e recria as tabelas)
+        npm run db:seed
+
+---------------------------------------------------------------------
+ 6. SUBIR O SERVIDOR
+---------------------------------------------------------------------
+ 6.1 Em modo desenvolvimento:
+
+        npm run dev
+
+     Resultado esperado: mensagem "Server listening at
+     http://0.0.0.0:3000" no terminal. Deixe esta janela aberta.
+     Para parar: Ctrl+C (o encerramento é seguro).
+
+ 6.2 Teste a saúde do sistema no navegador:
+
+        http://127.0.0.1:3000/health
+     Esperado: {"status":"ok","banco":"conectado",...}
+
+ 6.3 A página inicial http://127.0.0.1:3000 abre o PORTAL WEB (seção 7).
+     A documentação técnica da API (Swagger) fica em /docs.
+
+---------------------------------------------------------------------
+ 7. USAR O PORTAL WEB (como o usuário externo)
+---------------------------------------------------------------------
+ Abra http://127.0.0.1:3000 no navegador. A tela de entrada tem duas abas.
+
+ 7.0 SOU PARCEIRO (entra com a chave de API)
+     1) No terminal, na pasta greencode-av3, gere uma chave de teste:
+            npm run chave:demo -- --escrita
+        Copie a chave que aparece (ela só é mostrada uma vez).
+     2) No portal, aba "Sou parceiro", cole a chave e clique em Entrar.
+     3) O menu mostra só o que a chave permite:
+        - Lotes: lista os lotes da organização e abre cada um
+        - Rastrear equipamento: informe o código e veja a trilha de
+          etapas e o histórico (os códigos aparecem no detalhe do lote)
+        - Registrar lote: informe nota fiscal e equipamentos
+        - Análises: eficiência, rentabilidade e vida útil restante
+        - Relatórios: peça um relatório (CSV ou JSON), acompanhe o
+          andamento (Na fila, Processando, Pronto) e clique em Baixar
+     4) No canto inferior do menu há a barra do limite de requisições
+        por minuto da chave.
+
+ 7.0.1 EQUIPE INTERNA (usuário e senha)
+     Aba "Equipe interna", por exemplo admin / Admin@123 (veja a seção
+     de usuários de exemplo). Administrador vê Análises (calcular e
+     consultar histórico), Relatórios, Chaves de API (criar, revogar,
+     trocar a chave) e Fila (tentar de novo tarefas que falharam).
+     Auditor vê Análises e Relatórios.
+
+---------------------------------------------------------------------
+ 7B. TESTAR A API NA MÃO (Swagger)
+---------------------------------------------------------------------
+ SWAGGER (no navegador, nada para instalar)
+
+     http://127.0.0.1:3000/docs
+
+     - Abra POST /api/v1/internal/auth/login > "Try it out", envie
+         {"usuario":"superusuario","senha":"Super@123"}
+     - Copie o valor de "token" da resposta
+     - Clique em "Authorize" (topo da página), cole o token, confirme
+     - Agora todas as rotas protegidas podem ser testadas ali mesmo
+     - O superusuário acessa todas as rotas. Para testar as permissões dos
+       outros papéis, faça login com admin, operador, gestor ou auditor
+       (clique em "Authorize" > "Logout" e entre de novo).
+     - Relatórios em CSV: em GET /api/v1/internal/relatorios/financeiro (ou outro
+       relatório / auditoria), preencha o campo "formato" com csv; o
+       arquivo baixado abre direto no Excel.
+     - Esqueceu a senha do superusuário? Com o .env configurado, rode no
+       terminal da pasta greencode-av3:
+           npm run superusuario:redefinir -- NovaSenha@123
+     Ideal para: ver todas as rotas e o que cada uma recebe e devolve.
+
+ 7.1 ANÁLISES (AV3)
+     Logado como auditor (ou admin), em "Análises":
+       POST /api/v1/internal/analises/EFICIENCIA/executar   (corpo: {})
+       POST /api/v1/internal/analises/RENTABILIDADE/executar
+       POST /api/v1/internal/analises/VIDA_UTIL/executar
+     Cada execução fica gravada: veja em GET .../analises/historico.
+     As análises também rodam sozinhas todo dia às 03:00 (CRON_ANALISES no
+     .env). Para rodar agora o mesmo trabalho do agendador, logado como
+     admin: POST /api/v1/admin/analises/executar-agendadas
+
+ 7.2 RELATÓRIO ASSÍNCRONO (AV3)
+     Em "Relatórios assíncronos":
+       1) POST /api/v1/internal/relatorios-assincronos
+          {"tipo":"RENTABILIDADE","formato":"CSV"}   -> responde 202 com o "id"
+       2) GET /api/v1/internal/relatorios-assincronos/{id}
+          repita até o status ser CONCLUIDA (leva uns 2 segundos)
+       3) GET /api/v1/internal/relatorios-assincronos/{id}/download
+          baixa o arquivo (o CSV abre no Excel)
+     Em /api/v1/admin/fila/resumo (admin) aparece a contagem por status.
+
+ 7.3 API PÚBLICA COM CHAVE (AV3)
+     1) Crie uma chave de parceiro. Pelo terminal, na pasta greencode-av3:
+            npm run chave:demo
+        (imprime a chave uma única vez; com "-- --escrita" inclui a
+        permissão de registrar lotes). Ou, logado como admin, use
+        POST /api/v1/admin/chaves-api no Swagger.
+     2) No Swagger, clique em "Authorize", preencha o campo apiKey com a
+        chave e teste as rotas "Público - ..." em /api/v1/public.
+        Ou pelo terminal (Linux/Git Bash):
+            curl -H "X-API-Key: SUA_CHAVE" http://127.0.0.1:3000/api/v1/public/eu
+     3) Cada chave só vê os dados da sua organização, tem permissões
+        próprias e um limite de requisições por minuto: ao exceder, a API
+        responde 429 com o cabeçalho Retry-After.
+
+---------------------------------------------------------------------
+ 8. ONDE ESTÁ CADA COISA
+---------------------------------------------------------------------
+ README.md                          (raiz) apresentação do projeto
+ docs/docs.md                       documentação técnica (no padrão da AV1)
+ docs/RELATORIO-TECNICO.md          decisões da AV3: estatística, fila, retry, escala
+ docs/ARQUITETURA.md                decisões, trade-offs, limites do monolito
+ docs/API.md                        todas as rotas, papéis e erros
+ docs/CHECKLIST.md                  requisitos da AV3 x onde foram feitos
+ docs/PASSO-A-PASSO.txt             este arquivo
+ greencode-av3/prisma/schema.prisma modelo do banco
+ greencode-av3/prisma/seed.ts       dados de exemplo
+ greencode-av3/src/analytics/        cálculos das análises e agendador
+ greencode-av3/src/fila/              worker da fila de relatórios
+ greencode-av3/src/                 código (rotas > controllers > serviços >
+                                    repositórios)
+ greencode-av3/tests/               testes unitários e de integração
+=====================================================================
