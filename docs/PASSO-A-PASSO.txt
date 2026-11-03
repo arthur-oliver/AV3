@@ -193,11 +193,30 @@ Os detalhes de cada etapa estão abaixo.
         por minuto da chave.
 
  7.0.1 EQUIPE INTERNA (usuário e senha)
-     Aba "Equipe interna", por exemplo admin / Admin@123 (veja a seção
-     de usuários de exemplo). Administrador vê Análises (calcular e
-     consultar histórico), Relatórios, Chaves de API (criar, revogar,
-     trocar a chave) e Fila (tentar de novo tarefas que falharam).
-     Auditor vê Análises e Relatórios.
+     Aba "Equipe interna". Usuários de exemplo (veja a seção de
+     usuários criados pelo seed): superusuario, admin, operador, gestor
+     e auditor. O menu muda conforme o papel, igual à API:
+
+     Superusuário   tudo, e é o ÚNICO que gerencia contas: em "Usuários"
+                    cria usuário, altera nome e papel, ativa/desativa,
+                    redefine senha e exclui (só quem nunca operou).
+     Administrador  tudo da operação, menos contas de usuário:
+                    organizações e contratos, lotes, equipamentos,
+                    relatórios, auditoria, análises, pedidos de relatório,
+                    chaves de API e fila.
+     Operador de    organizações e contratos (cadastrar, editar,
+     cadastro       inativar, renovar, substituir, remover, excluir) e
+                    consulta de lotes, equipamentos e relatórios.
+     Gestor de      lotes (registrar, corrigir, adicionar equipamentos,
+     almoxarifado   processar triagem, inativar, excluir) e equipamentos
+                    (mudar situação, movimentar, estado físico, corrigir,
+                    excluir) e consulta de organizações e relatórios.
+     Auditor        somente leitura em tudo, mais Auditoria, Análises e
+                    Pedidos de relatório.
+
+     Todos têm "Minha conta" (alterar o próprio nome e a própria senha).
+     Relatórios (organização, situação, financeiro) e Auditoria têm botão
+     para baixar em CSV, que abre no Excel.
 
 ---------------------------------------------------------------------
  7B. TESTAR A API NA MÃO (Swagger)

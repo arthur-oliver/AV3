@@ -26,7 +26,7 @@ Baseado no enunciado da AV3. A AV2 serviu de base, e seus requisitos continuam a
 | 20 | Compatível com Windows 10+ e Ubuntu 24.04.03+ e derivados | Sem dependências nativas novas; fuso por nome; instruções para os dois | ⚠️ valide rodando nos dois, se possível |
 | 21 | Testes | `tests/unit` (sem banco) e `tests/integration` (API + MySQL; `web.test.ts` cobre o portal) | ✅ |
 | 22 | *(extra)* Isolamento por organização na API pública (404 em recurso alheio) | `PublicoController` | ✅ |
-| 23 | Interface web para o usuário externo executar os procedimentos (chave, lotes, rastreio, análises, relatórios assíncronos) | `greencode-av3/web/` servido por `rotas/web.ts` em `/app/` | ✅ |
+| 23 | Interface web para o usuário externo executar os procedimentos (chave, lotes, rastreio, análises, relatórios assíncronos) | `greencode-av3/web/` (`app.js` e `interno.js`) servido por `rotas/web.ts` em `/app/`; as telas internas seguem a matriz de papéis da AV2 (gestão de usuários só do superusuário) | ✅ |
 | 23 | *(extra)* Revogação, rotação e expiração de chaves; chaves auditadas no journal | `ChaveApiServico` | ✅ |
 | 24 | *(extra)* Reivindicação atômica, recuperação de tarefas travadas e reenfileiramento | `TarefaRepositorio`, `FilaServico` | ✅ |
 | 25 | *(extra)* Massa de dados para as análises e chave de demonstração | `prisma/seed.ts`, `npm run chave:demo` | ✅ |
