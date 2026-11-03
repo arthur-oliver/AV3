@@ -20,6 +20,8 @@ const h = (tag, attrs, ...filhos) => {
   return e;
 };
 const $ = (s, r = document) => r.querySelector(s);
+// Como replaceChildren, mas ignora null/false (que viraria o texto "null").
+const pintar = (alvo, ...filhos) => alvo.replaceChildren(...filhos.flat(9).filter((f) => f !== null && f !== undefined && f !== false));
 const num = (n, c = 2) => (n === null || n === undefined ? '-' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: c }));
 const reais = (n) => (n === null || n === undefined ? '-' : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const pct = (n) => (n === null || n === undefined ? '-' : `${num(n, 1)}%`);
@@ -203,7 +205,7 @@ function vRelatorios() {
     if (pendente) temporizador = setTimeout(atualizar, 2000);
   }
   function desenhar(tarefas) {
-    lista.replaceChildren(tabela(
+    pintar(lista, tabela(
       [{ titulo: 'Relatório', valor: (t) => `${rotulo(ANALISES, t.tipo)} (${t.formato})` }, { titulo: 'Pedido em', valor: (t) => data(t.criadoEm) },
        { titulo: 'Situação', valor: (t) => { const [txt, cls] = STATUS_TAREFA[t.status] || [t.status, '']; return h('span', null, selo(txt, cls), t.status === 'PENDENTE' && t.tentativas > 0 ? ` nova tentativa ${t.tentativas}/${t.maxTentativas}` : '', t.status === 'FALHA' && t.erro ? ` ${t.erro}` : ''); } },
        { titulo: '', valor: (t) => (t.status === 'CONCLUIDA' ? h('button', { class: 'mini', onclick: () => baixar(`${base}/${t.id}/download`, t.nomeArquivo || `relatorio.${t.formato.toLowerCase()}`) }, 'Baixar') : null) }],
@@ -260,7 +262,7 @@ function vLotes(id) {
     const r = await seguro(() => chamar(P(`/lotes?${q}`)));
     if (!r) return;
     const ultima = Math.max(1, Math.ceil(r.total / 15));
-    alvo.replaceChildren(
+    pintar(alvo, 
       tabela([{ titulo: 'Nota fiscal', valor: (l) => l.notaFiscal }, { titulo: 'Entrada', valor: (l) => data(l.dataEntrada) }, { titulo: 'Transportadora', valor: (l) => l.transportadora }, { titulo: 'Equipamentos', num: true, valor: (l) => (l._count ? l._count.equipamentos : '-') }, { titulo: 'Situação', valor: (l) => selo(rotulo(LOTES, l.statusProcessamento)) }],
         r.dados, { aoClicar: (l) => (location.hash = `#/lotes/${l.id}`), vazio: 'Nenhum lote encontrado.' }),
       h('div', { class: 'paginacao' }, h('button', { class: 'sec mini', disabled: pagina <= 1, onclick: () => { pagina--; carregar(); } }, 'Anterior'), `Página ${pagina} de ${ultima} (${r.total} lotes)`, h('button', { class: 'sec mini', disabled: pagina >= ultima, onclick: () => { pagina++; carregar(); } }, 'Próxima')));
@@ -273,9 +275,9 @@ function vLotes(id) {
 function vLoteDetalhe(id) {
   const alvo = h('div', null, h('p', { class: 'vazio' }, 'Carregando...'));
   seguro(() => chamar(P(`/lotes/${id}`))).then((r) => {
-    if (!r) { alvo.replaceChildren(h('p', null, h('a', { href: '#/lotes' }, 'Voltar para os lotes'))); return; }
+    if (!r) { pintar(alvo, h('p', null, h('a', { href: '#/lotes' }, 'Voltar para os lotes'))); return; }
     const l = r.dados;
-    alvo.replaceChildren(
+    pintar(alvo, 
       indicadores([['Nota fiscal', l.notaFiscal], ['Entrada', data(l.dataEntrada)], ['Transportadora', l.transportadora], ['Situação', rotulo(LOTES, l.statusProcessamento)], ['Equipamentos', l.resumo.quantidade], ['Peso total', `${num(l.resumo.pesoTotalKg)} kg`]]),
       l.observacoes ? h('p', null, l.observacoes) : null,
       h('h2', null, 'Equipamentos'),
@@ -290,11 +292,11 @@ function vRastrear(id) {
   const campo = h('input', { id: 'codigo', placeholder: 'Código do equipamento (36 caracteres)', value: id || '' });
   async function buscar(codigo) {
     const r = await seguro(() => chamar(P(`/rastreabilidade/${encodeURIComponent(codigo.trim())}`)));
-    if (!r) { alvo.replaceChildren(h('p', { class: 'vazio' }, 'Confira o código. Ele fica na etiqueta do equipamento e no detalhe do lote.')); return; }
+    if (!r) { pintar(alvo, h('p', { class: 'vazio' }, 'Confira o código. Ele fica na etiqueta do equipamento e no detalhe do lote.')); return; }
     const { equipamento: e, movimentacoes: m } = r.dados;
     const visitados = new Set(m.map((x) => x.destino));
     visitados.add(e.statusRastreamento);
-    alvo.replaceChildren(
+    pintar(alvo, 
       h('h2', null, `${rotulo(TIPOS, e.tipo)} ${e.marca} ${e.modelo}`.trim()),
       h('p', { class: 'suave' }, `Código ${e.codigoBarrasInterno}. ${rotulo(ESTADOS, e.estadoFisico)}, ${num(e.pesoQuilogramas)} kg, fabricado em ${e.anoFabricacao}.`),
       trilha(visitados, e.statusRastreamento, true),
@@ -335,9 +337,9 @@ function vNovoLote() {
     const r = await seguro(() => chamar(P('/lotes'), { metodo: 'POST', corpo }));
     if (!r) return;
     aviso('Lote registrado', `Nota fiscal ${r.dados.notaFiscal}.`);
-    resultado.replaceChildren(h('div', { class: 'painel' }, h('h3', null, 'Lote registrado'), h('p', null, `Foram cadastrados ${r.dados.equipamentos.length} equipamento(s). Guarde os códigos para rastrear:`),
+    pintar(resultado, h('div', { class: 'painel' }, h('h3', null, 'Lote registrado'), h('p', null, `Foram cadastrados ${r.dados.equipamentos.length} equipamento(s). Guarde os códigos para rastrear:`),
       tabela([{ titulo: 'Tipo', valor: (e) => rotulo(TIPOS, e.tipo) }, { titulo: 'Código', valor: (e) => e.codigoBarrasInterno }], r.dados.equipamentos), h('p', null, h('a', { href: `#/lotes/${r.dados.id}` }, 'Abrir o lote'))));
-    $('#nf').value = ''; linhas.replaceChildren(); novaLinha();
+    $('#nf').value = ''; pintar(linhas, ); novaLinha();
   }
   return h('div', null, cabeca('Registrar lote', 'Informe os dados da nota fiscal e liste os equipamentos enviados. O lote entra na sua organização.'),
     h('form', { class: 'painel', onsubmit: enviar },
@@ -354,9 +356,9 @@ function vNovoLote() {
 function vAnalisesParceiro() {
   const alvo = h('div');
   async function ver(tipo) {
-    alvo.replaceChildren(h('p', { class: 'vazio' }, 'Calculando...'));
+    pintar(alvo, h('p', { class: 'vazio' }, 'Calculando...'));
     const r = await seguro(() => chamar(P(`/analises/${tipo}`)));
-    alvo.replaceChildren(r ? mostrarAnalise(r.dados) : h('p', { class: 'vazio' }, 'Não foi possível carregar esta análise.'));
+    pintar(alvo, r ? mostrarAnalise(r.dados) : h('p', { class: 'vazio' }, 'Não foi possível carregar esta análise.'));
   }
   const tipoSel = h('select', { id: 'tipo', onchange: (e) => ver(e.target.value) }, opcoes(ANALISES));
   setTimeout(() => ver(tipoSel.value), 0);
@@ -364,11 +366,6 @@ function vAnalisesParceiro() {
 }
 
 // ---------- telas da equipe interna ----------
-function vInicioInterno() {
-  return h('div', null, cabeca(`Olá, ${sessao.nome || sessao.usuario}`, 'Acompanhe as análises, peça relatórios e administre o acesso dos parceiros.'),
-    h('div', { class: 'painel' }, h('p', null, `Seu papel: ${sessao.papel}.`), h('p', { class: 'suave' }, 'Os itens do menu aparecem conforme o seu papel. A documentação técnica da API está em ', h('a', { href: '/docs' }, 'Swagger'), '.')));
-}
-
 function vAnalisesInterno() {
   const alvo = h('div');
   const orgSel = h('select', { id: 'org' }, h('option', { value: '' }, 'Todas as organizações'));
@@ -381,16 +378,16 @@ function vAnalisesInterno() {
     if (orgSel.value) corpo.organizacaoId = orgSel.value;
     if ($('#ini').value) corpo.inicio = $('#ini').value;
     if ($('#fim').value) corpo.fim = $('#fim').value;
-    alvo.replaceChildren(h('p', { class: 'vazio' }, 'Calculando...'));
+    pintar(alvo, h('p', { class: 'vazio' }, 'Calculando...'));
     const r = await seguro(() => chamar(I(`/analises/${tipoSel.value}/executar`), { metodo: 'POST', corpo }));
-    alvo.replaceChildren(r ? mostrarAnalise(r.dados) : '');
+    pintar(alvo, r ? mostrarAnalise(r.dados) : '');
     if (r) carregarHistorico();
   }
   async function carregarHistorico() {
     const r = await seguro(() => chamar(I(`/analises/historico?limite=10&tipo=${tipoSel.value}`)));
     if (!r) return;
-    historico.replaceChildren(tabela([{ titulo: 'Gerada em', valor: (a) => data(a.geradoEm) }, { titulo: 'Origem', valor: (a) => ({ AGENDADA: 'Agendada', MANUAL: 'Manual', TAREFA: 'Relatório' })[a.origem] }, { titulo: 'Escopo', valor: (a) => (a.organizacaoId ? 'Uma organização' : 'Todas') }, { titulo: 'Duração', num: true, valor: (a) => `${a.duracaoMs} ms` }],
-      r.dados, { aoClicar: async (a) => { const d = await seguro(() => chamar(I(`/analises/historico/${a.id}`))); if (d) { alvo.replaceChildren(mostrarAnalise(d.dados)); alvo.scrollIntoView({ behavior: 'smooth' }); } }, vazio: 'Ainda não há análises deste tipo.' }));
+    pintar(historico, tabela([{ titulo: 'Gerada em', valor: (a) => data(a.geradoEm) }, { titulo: 'Origem', valor: (a) => ({ AGENDADA: 'Agendada', MANUAL: 'Manual', TAREFA: 'Relatório' })[a.origem] }, { titulo: 'Escopo', valor: (a) => (a.organizacaoId ? 'Uma organização' : 'Todas') }, { titulo: 'Duração', num: true, valor: (a) => `${a.duracaoMs} ms` }],
+      r.dados, { aoClicar: async (a) => { const d = await seguro(() => chamar(I(`/analises/historico/${a.id}`))); if (d) { pintar(alvo, mostrarAnalise(d.dados)); alvo.scrollIntoView({ behavior: 'smooth' }); } }, vazio: 'Ainda não há análises deste tipo.' }));
   }
   tipoSel.addEventListener('change', carregarHistorico);
   setTimeout(carregarHistorico, 0);
@@ -409,12 +406,12 @@ function vChaves() {
   async function carregar() {
     const r = await seguro(() => chamar(A('/chaves-api?limite=100')));
     if (!r) return;
-    lista.replaceChildren(tabela([{ titulo: 'Nome', valor: (c) => c.nome }, { titulo: 'Prefixo', valor: (c) => `gck_${c.prefixo}_...` }, { titulo: 'Permissões', valor: (c) => c.permissoes.map((p) => rotulo(PERMISSOES, p)).join('; ') }, { titulo: 'Limite/min', num: true, valor: (c) => c.limitePorMinuto }, { titulo: 'Último uso', valor: (c) => data(c.ultimoUsoEm) }, { titulo: 'Situação', valor: (c) => selo(c.ativa ? 'Ativa' : 'Revogada', c.ativa ? 'ok' : 'erro') },
+    pintar(lista, tabela([{ titulo: 'Nome', valor: (c) => c.nome }, { titulo: 'Prefixo', valor: (c) => `gck_${c.prefixo}_...` }, { titulo: 'Permissões', valor: (c) => c.permissoes.map((p) => rotulo(PERMISSOES, p)).join('; ') }, { titulo: 'Limite/min', num: true, valor: (c) => c.limitePorMinuto }, { titulo: 'Último uso', valor: (c) => data(c.ultimoUsoEm) }, { titulo: 'Situação', valor: (c) => selo(c.ativa ? 'Ativa' : 'Revogada', c.ativa ? 'ok' : 'erro') },
       { titulo: '', valor: (c) => h('span', { class: 'acoes' },
         h('button', { class: 'sec mini', onclick: () => alternar(c) }, c.ativa ? 'Revogar' : 'Reativar'),
         h('button', { class: 'sec mini', onclick: () => rotacionar(c) }, 'Trocar chave')) }], r.dados, { vazio: 'Nenhuma chave criada ainda.' }));
   }
-  const mostrarChave = (r, titulo) => novo.replaceChildren(h('div', { class: 'painel' }, h('h3', null, titulo), h('p', null, 'Copie agora e entregue ao parceiro. Por segurança, esta chave não será mostrada de novo.'), h('div', { class: 'chave-nova' }, r.chave), h('button', { class: 'sec', onclick: () => navigator.clipboard && navigator.clipboard.writeText(r.chave).then(() => aviso('Copiada', 'A chave foi copiada.')) }, 'Copiar chave')));
+  const mostrarChave = (r, titulo) => pintar(novo, h('div', { class: 'painel' }, h('h3', null, titulo), h('p', null, 'Copie agora e entregue ao parceiro. Por segurança, esta chave não será mostrada de novo.'), h('div', { class: 'chave-nova' }, r.chave), h('button', { class: 'sec', onclick: () => navigator.clipboard && navigator.clipboard.writeText(r.chave).then(() => aviso('Copiada', 'A chave foi copiada.')) }, 'Copiar chave')));
   async function alternar(c) {
     if (c.ativa && !confirm(`Revogar a chave "${c.nome}"? O parceiro perde o acesso na hora.`)) return;
     if (await seguro(() => chamar(A(`/chaves-api/${c.id}/ativa`), { metodo: 'PATCH', corpo: { ativa: !c.ativa, versao: c.versao } }))) { aviso(c.ativa ? 'Chave revogada' : 'Chave reativada'); carregar(); }
@@ -451,8 +448,8 @@ function vFila() {
   const resumo = h('div'); const lista = h('div');
   async function carregar() {
     const [a, b] = await Promise.all([seguro(() => chamar(A('/fila/resumo'))), seguro(() => chamar(A('/fila/tarefas?limite=20')))]);
-    if (a) resumo.replaceChildren(indicadores(Object.entries(a.dados).map(([k, v]) => [rotulo(Object.fromEntries(Object.entries(STATUS_TAREFA).map(([s, t]) => [s, t[0]])), k), v])));
-    if (b) lista.replaceChildren(tabela([{ titulo: 'Relatório', valor: (t) => `${rotulo(ANALISES, t.tipo)} (${t.formato})` }, { titulo: 'Pedido por', valor: (t) => t.solicitadoPor }, { titulo: 'Pedido em', valor: (t) => data(t.criadoEm) }, { titulo: 'Tentativas', num: true, valor: (t) => `${t.tentativas}/${t.maxTentativas}` }, { titulo: 'Situação', valor: (t) => selo((STATUS_TAREFA[t.status] || [t.status])[0], (STATUS_TAREFA[t.status] || [])[1]) }, { titulo: 'Erro', valor: (t) => t.erro || '' },
+    if (a) pintar(resumo, indicadores(Object.entries(a.dados).map(([k, v]) => [rotulo(Object.fromEntries(Object.entries(STATUS_TAREFA).map(([s, t]) => [s, t[0]])), k), v])));
+    if (b) pintar(lista, tabela([{ titulo: 'Relatório', valor: (t) => `${rotulo(ANALISES, t.tipo)} (${t.formato})` }, { titulo: 'Pedido por', valor: (t) => t.solicitadoPor }, { titulo: 'Pedido em', valor: (t) => data(t.criadoEm) }, { titulo: 'Tentativas', num: true, valor: (t) => `${t.tentativas}/${t.maxTentativas}` }, { titulo: 'Situação', valor: (t) => selo((STATUS_TAREFA[t.status] || [t.status])[0], (STATUS_TAREFA[t.status] || [])[1]) }, { titulo: 'Erro', valor: (t) => t.erro || '' },
       { titulo: '', valor: (t) => (t.status === 'FALHA' ? h('button', { class: 'sec mini', onclick: async () => { if (await seguro(() => chamar(A(`/fila/tarefas/${t.id}/reenfileirar`), { metodo: 'POST' }))) { aviso('Tarefa recolocada na fila'); carregar(); } } }, 'Tentar de novo') : null) }], b.dados, { vazio: 'A fila está vazia.' }));
   }
   async function agendadas() {
@@ -470,9 +467,20 @@ function menu() {
   if (sessao.modo === 'parceiro') {
     return [['inicio', 'Início', vInicioParceiro, true], ['lotes', 'Lotes', vLotes, tem('LER_RASTREABILIDADE')], ['rastrear', 'Rastrear equipamento', vRastrear, tem('LER_RASTREABILIDADE')], ['novo-lote', 'Registrar lote', vNovoLote, tem('ESCREVER_LOTES')], ['analises', 'Análises', vAnalisesParceiro, tem('LER_RELATORIOS')], ['relatorios', 'Relatórios', vRelatorios, tem('LER_RELATORIOS')]].filter((m) => m[3]);
   }
-  const adm = ['SUPERUSUARIO', 'ADMINISTRADOR'].includes(sessao.papel);
-  const aud = adm || sessao.papel === 'AUDITOR';
-  return [['inicio', 'Início', vInicioInterno, true], ['analises', 'Análises', vAnalisesInterno, aud], ['relatorios', 'Relatórios', vRelatorios, aud], ['chaves', 'Chaves de API', vChaves, adm], ['fila', 'Fila', vFila, adm]].filter((m) => m[3]);
+  const t = interno();
+  const adm = t.eh('SUPERUSUARIO', 'ADMINISTRADOR');
+  const aud = t.podeAuditar();
+  return [['inicio', 'Início', t.vInicio, true], ['usuarios', 'Usuários', t.vUsuarios, t.ehSuper()], ['organizacoes', 'Organizações', t.vOrganizacoes, true], ['lotes', 'Lotes', t.vLotes, true], ['equipamentos', 'Equipamentos', t.vEquipamentos, true],
+    ['relatorios', 'Relatórios', t.vRelatorios, true], ['auditoria', 'Auditoria', t.vAuditoria, aud], ['analises', 'Análises', vAnalisesInterno, aud], ['pedidos', 'Pedidos de relatório', vRelatorios, aud],
+    ['chaves', 'Chaves de API', vChaves, adm], ['fila', 'Fila', vFila, adm], ['conta', 'Minha conta', t.vConta, true]].filter((m) => m[3]);
+}
+
+// Tudo o que as telas da equipe interna (interno.js) precisam do núcleo.
+const GC = { h, $, pintar, num, reais, pct, data, chamar, seguro, baixar, aviso, tabela, indicadores, selo, cabeca, opcoes, rotulo, STATUS, TIPOS, ESTADOS, LOTES, I, A, sessao: () => sessao, salvarSessao, redesenhar: () => desenhar() };
+let internoCache = null;
+function interno() {
+  if (!internoCache) { internoCache = window.GC_INTERNO(GC); internoCache.eh = (...p) => p.includes(sessao.papel); }
+  return internoCache;
 }
 
 function atualizarLimite() {

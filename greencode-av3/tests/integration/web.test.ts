@@ -1,4 +1,4 @@
-// Teste do portal web: a raiz leva ao portal e só os três arquivos esperados são servidos.
+// Teste do portal web: a raiz leva ao portal e só os quatro arquivos esperados são servidos.
 // Não consulta o banco, mas o app precisa do .env (DATABASE_URL e JWT_SECRET) para subir.
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -28,6 +28,9 @@ describe('portal web', () => {
     expect(css.headers['content-type']).toContain('text/css');
     const js = await app.inject({ method: 'GET', url: '/app/app.js' });
     expect(js.headers['content-type']).toContain('javascript');
+    const interno = await app.inject({ method: 'GET', url: '/app/interno.js' });
+    expect(interno.statusCode).toBe(200);
+    expect(interno.body).toContain('GC_INTERNO');
   });
 
   it('não serve nenhum outro arquivo, nem com caminho disfarçado', async () => {

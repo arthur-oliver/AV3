@@ -148,3 +148,9 @@ table + p, .rolagem + p { margin-top: .9rem; }
 .entrada .historia h1 { max-width: 20ch; }
 
 /* este trecho tem o dedo do Rossi. */
+dialog.modal { border: 1px solid var(--linha); border-radius: 6px; background: var(--superficie); color: var(--tinta); padding: 1.4rem; width: min(560px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; }
+dialog.modal::backdrop { background: rgba(10, 18, 14, .55); }
+dialog.modal textarea, dialog.modal select, dialog.modal input:not([type=checkbox]) { width: 100%; }
+pre.json { white-space: pre-wrap; word-break: break-word; max-width: 60ch; font-size: .8rem; background: rgba(0,0,0,.05); padding: .6rem; border-radius: 4px; }
+.painel .linha-campos + .acoes, .acoes + .linha-campos { margin-top: .4rem; }
+.acoes + h2, .acoes + h3, .indicadores + h2 { margin-top: 1.5rem; }

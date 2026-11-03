@@ -2,14 +2,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 
-// Portal web (interface para parceiros e equipe interna). São três arquivos estáticos, lidos uma vez ao subir.
+// Portal web (interface para parceiros e equipe interna). São quatro arquivos estáticos, lidos uma vez ao subir.
 // Só os nomes da lista abaixo são servidos: nenhum caminho vindo da URL chega ao sistema de arquivos.
 // A pasta "web" fica ao lado de "src" (e de "dist"), então o caminho é o mesmo rodando com tsx ou compilado.
 const PASTA = join(__dirname, '..', '..', 'web');
 const ARQUIVOS: Record<string, { arquivo: string; tipo: string }> = {
   '': { arquivo: 'index.html', tipo: 'text/html; charset=utf-8' },
   'app.css': { arquivo: 'app.css', tipo: 'text/css; charset=utf-8' },
-  'app.js': { arquivo: 'app.js', tipo: 'text/javascript; charset=utf-8' }
+  'app.js': { arquivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
+  'interno.js': { arquivo: 'interno.js', tipo: 'text/javascript; charset=utf-8' }
 };
 
 export async function rotasWeb(app: FastifyInstance): Promise<void> {
