@@ -1,3 +1,5 @@
+<img src="docs/assets/logo_greencode.png" alt="Banner do projeto" style="width:100%;">
+
 # Greencode — AV3
 
 API REST em Node.js e TypeScript para apoiar a **logística reversa de resíduos eletrônicos**: do recebimento do lote até a triagem, o desmonte e a baixa definitiva de cada equipamento, com rastreabilidade e auditoria. A AV3 evolui a API da AV2 com uma **camada analítica**, uma **API pública para parceiros** e **processamento assíncrono de relatórios**.
