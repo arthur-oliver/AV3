@@ -96,6 +96,8 @@ model Usuario {
   senhaHash    String       @db.VarChar(100)
   papel        PapelUsuario
   ativo        Boolean      @default(true)
+  // Senha provisória: enquanto true, o usuário só consegue ver o próprio perfil e trocar a senha.
+  trocaSenhaObrigatoria Boolean @default(false)
   ultimoAcesso DateTime?
   criadoEm     DateTime     @default(now())
   atualizadoEm DateTime     @updatedAt

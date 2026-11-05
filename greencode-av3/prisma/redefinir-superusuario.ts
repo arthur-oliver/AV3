@@ -20,12 +20,12 @@ async function main() {
   }
   const senhaHash = await bcrypt.hash(nova, 10);
   await prisma.$transaction(async (tx) => {
-    await tx.usuario.update({ where: { id: alvo.id }, data: { senhaHash, ativo: true, versao: { increment: 1 } } });
+    await tx.usuario.update({ where: { id: alvo.id }, data: { senhaHash, ativo: true, trocaSenhaObrigatoria: true, versao: { increment: 1 } } });
     await tx.journalTransacao.create({
       data: { operacao: 'ATUALIZAR', entidade: 'Usuario', entidadeId: alvo.id, dadosDepois: { campo: 'senha', redefinidaPor: 'script-de-recuperacao' }, usuarioResponsavel: 'script-de-recuperacao' }
     });
   });
-  console.log(`Senha do superusuário "${alvo.usuario}" redefinida e conta ativa.`);
+  console.log(`Senha do superusuário "${alvo.usuario}" redefinida e conta ativa. No próximo login será exigida a troca da senha.`);
 }
 
 main()

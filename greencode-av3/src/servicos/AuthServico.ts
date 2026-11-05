@@ -41,7 +41,7 @@ export class AuthServico {
       await registrarJournal(tx, { operacao: 'LOGIN', entidade: 'Usuario', entidadeId: u.id, usuario: u.usuario });
     });
 
-    return { id: u.id, usuario: u.usuario, papel: u.papel };
+    return { id: u.id, usuario: u.usuario, papel: u.papel, trocaSenhaObrigatoria: u.trocaSenhaObrigatoria };
   }
 
   async alterarSenha(usuarioId: string, senhaAtual: string, novaSenha: string): Promise<void> {
@@ -50,9 +50,13 @@ export class AuthServico {
     if (!u || !(await verificarSenha(senhaAtual, u.senhaHash))) {
       throw new NaoAutenticado('Senha atual incorreta.');
     }
+    // Padrão dos sistemas de login: a nova senha precisa ser diferente da atual (senão a provisória continuaria valendo).
+    if (await verificarSenha(novaSenha, u.senhaHash)) {
+      throw new RegraNegocio('A nova senha deve ser diferente da senha atual.');
+    }
     const senhaHash = await gerarHashSenha(novaSenha);
     await prisma.$transaction(async (tx) => {
-      await this.usuarios.atualizar(u.id, { senhaHash }, tx);
+      await this.usuarios.atualizar(u.id, { senhaHash, trocaSenhaObrigatoria: false }, tx);
       await registrarJournal(tx, { operacao: 'ATUALIZAR', entidade: 'Usuario', entidadeId: u.id, usuario: u.usuario, dadosDepois: { campo: 'senha' } });
     });
   }

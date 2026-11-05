@@ -14,12 +14,13 @@ export class AuthController {
     const u = await this.servico.autenticar(req.body.usuario, req.body.senha);
     // O token carrega o id e o papel do usuário (exigência da AV2).
     const token = await reply.jwtSign({ sub: u.id, usuario: u.usuario, papel: u.papel });
-    return { token, tipo: 'Bearer', expiraEm: config.jwtExpiraEm, usuario: u };
+    // trocaSenhaObrigatoria = true: o cliente deve mostrar a tela de troca de senha antes de qualquer outra.
+    return { token, tipo: 'Bearer', expiraEm: config.jwtExpiraEm, trocaSenhaObrigatoria: u.trocaSenhaObrigatoria, usuario: { id: u.id, usuario: u.usuario, papel: u.papel } };
   };
 
   eu = async (req: FastifyRequest) => {
     const u = await this.usuarios.buscar(req.user.sub);
-    return { id: u.id, usuario: u.usuario, nome: u.nome, papel: req.user.papel, versao: u.versao };
+    return { id: u.id, usuario: u.usuario, nome: u.nome, papel: req.user.papel, versao: u.versao, trocaSenhaObrigatoria: u.trocaSenhaObrigatoria };
   };
 
   // Cada usuário altera apenas o PRÓPRIO nome (o id vem do token, nunca da URL).

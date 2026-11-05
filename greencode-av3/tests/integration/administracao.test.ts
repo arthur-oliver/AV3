@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { construirApp } from '../../src/app';
 import { gerarCnpjValido } from '../helpers/cnpj';
 import { criarCliente } from '../helpers/api';
+import { prisma } from '../../src/lib/prisma';
 
 let app: FastifyInstance;
 const api = criarCliente(() => app);
@@ -25,6 +26,10 @@ async function criarUsuario(papel: string, apelido: string) {
   usuariosTemporarios.push(u.id);
   return u;
 }
+
+// Usuário criado pela API nasce com senha provisória (troca obrigatória). Quando o teste precisa usar o token em
+// outras rotas, o fluxo de troca é pulado direto no banco; o fluxo real é testado em "troca obrigatória de senha".
+const liberarTroca = (id: string) => prisma.usuario.update({ where: { id }, data: { trocaSenhaObrigatoria: false } });
 
 // Organização de teste com contrato ativo (nome com sufixo único).
 const criarOrganizacao = (rotulo: string, token = tokens.operador) =>
@@ -194,6 +199,7 @@ describe('usuários: gestão de contas', () => {
     // responde 404 (autorizado) ou 403 (sem permissão).
     const rota = '/api/v1/internal/organizacoes/00000000-0000-4000-8000-00000000ffff?versao=1';
     const b = await criarUsuario('ADMINISTRADOR', 'adm_b');
+    await liberarTroca(b.id);
     const tokenB = await api.login(b.usuario, SENHA);
     expect((await req(tokenB, 'DELETE', rota)).statusCode).toBe(404);
 
@@ -287,6 +293,7 @@ describe('superusuário: único responsável pelas contas', () => {
     expect(velho.statusCode).toBe(409);
 
     // o próprio usuário altera o seu nome, usando a versão de /auth/me
+    await liberarTroca(u.id);
     const token = await api.login(u.usuario, SENHA);
     const eu = (await req(token, 'GET', '/api/v1/internal/auth/me')).json() as { nome: string; versao: number };
     expect(eu.nome).toBe('Maria da Silva');
@@ -304,6 +311,63 @@ describe('superusuário: único responsável pelas contas', () => {
     const r = await req(token, 'POST', '/api/v1/internal/auth/alterar-senha', { senhaAtual: SENHA, novaSenha: 'Trocada@12345' });
     expect(r.statusCode).toBe(204);
     expect((await api.tentarLogin(u.usuario, 'Trocada@12345')).statusCode).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+describe('troca obrigatória de senha no primeiro acesso', () => {
+  it('usuário novo entra com a senha provisória, mas só consegue ver o perfil e trocar a senha', async () => {
+    const u = await criarUsuario('GESTOR_ALMOXARIFADO', 'primeiro');
+    const login = await api.tentarLogin(u.usuario, SENHA);
+    expect(login.statusCode).toBe(200);
+    expect(login.json().trocaSenhaObrigatoria).toBe(true);
+    const token = login.json().token as string;
+
+    // qualquer outra rota é recusada com um erro específico
+    const lotes = await req(token, 'GET', '/api/v1/internal/lotes');
+    expect(lotes.statusCode).toBe(403);
+    expect(lotes.json().erro).toBe('TROCA_SENHA_OBRIGATORIA');
+    expect((await req(token, 'PUT', '/api/v1/internal/auth/perfil', { nome: 'Fulano', versao: 1 })).json().erro).toBe('TROCA_SENHA_OBRIGATORIA');
+
+    // /auth/me continua liberada e informa a pendência
+    const eu = await req(token, 'GET', '/api/v1/internal/auth/me');
+    expect(eu.statusCode).toBe(200);
+    expect(eu.json().trocaSenhaObrigatoria).toBe(true);
+
+    // a nova senha não pode repetir a provisória, nem ser fraca, nem a atual estar errada
+    expect((await req(token, 'POST', '/api/v1/internal/auth/alterar-senha', { senhaAtual: SENHA, novaSenha: SENHA })).statusCode).toBe(422);
+    expect((await req(token, 'POST', '/api/v1/internal/auth/alterar-senha', { senhaAtual: SENHA, novaSenha: 'semnumero' })).statusCode).toBe(422);
+    expect((await req(token, 'POST', '/api/v1/internal/auth/alterar-senha', { senhaAtual: 'errada123', novaSenha: 'Definitiva@123' })).statusCode).toBe(401);
+
+    // troca feita: o mesmo token passa a funcionar em tudo
+    expect((await req(token, 'POST', '/api/v1/internal/auth/alterar-senha', { senhaAtual: SENHA, novaSenha: 'Definitiva@123' })).statusCode).toBe(204);
+    expect((await req(token, 'GET', '/api/v1/internal/lotes')).statusCode).toBe(200);
+    expect((await req(token, 'GET', '/api/v1/internal/auth/me')).json().trocaSenhaObrigatoria).toBe(false);
+
+    // a senha provisória deixa de valer; no próximo login não há mais pendência
+    expect((await api.tentarLogin(u.usuario, SENHA)).statusCode).toBe(401);
+    const depois = await api.tentarLogin(u.usuario, 'Definitiva@123');
+    expect(depois.statusCode).toBe(200);
+    expect(depois.json().trocaSenhaObrigatoria).toBe(false);
+  });
+
+  it('quando o superusuário redefine a senha de alguém, a troca volta a ser obrigatória', async () => {
+    const u = await criarUsuario('AUDITOR', 'reset_troca');
+    await liberarTroca(u.id);
+    const antes = await api.login(u.usuario, SENHA);
+    expect((await req(antes, 'GET', '/api/v1/internal/lotes')).statusCode).toBe(200);
+
+    expect((await req(tokens.super, 'POST', `/api/v1/admin/usuarios/${u.id}/redefinir-senha`, { novaSenha: 'Provisoria@1' })).statusCode).toBe(204);
+    // mesmo o token antigo fica restrito até a troca
+    expect((await req(antes, 'GET', '/api/v1/internal/lotes')).json().erro).toBe('TROCA_SENHA_OBRIGATORIA');
+    const novo = await api.tentarLogin(u.usuario, 'Provisoria@1');
+    expect(novo.json().trocaSenhaObrigatoria).toBe(true);
+  });
+
+  it('a lista de usuários mostra quem ainda não trocou a senha provisória', async () => {
+    const u = await criarUsuario('AUDITOR', 'lista_troca');
+    const dados = await buscarUsuario(u.id);
+    expect(dados.trocaSenhaObrigatoria).toBe(true);
   });
 });
 

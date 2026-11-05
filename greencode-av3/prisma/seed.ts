@@ -20,6 +20,11 @@ const ID = {
   lote5: '00000000-0000-4000-8000-0000000000b5'
 };
 
+// Contas de demonstração entram SEM troca obrigatória de senha, para os testes automatizados e a correção
+// funcionarem de cara. Para exigir a troca também nelas: SEED_EXIGE_TROCA=true npm run db:seed (em banco novo).
+// Usuários criados pelo superusuário no sistema SEMPRE exigem a troca no primeiro acesso.
+const EXIGE_TROCA = process.env.SEED_EXIGE_TROCA === 'true';
+
 async function usuarios() {
   const lista = [
     { usuario: 'superusuario', nome: 'Superusuário', senha: 'Super@123', papel: 'SUPERUSUARIO' },
@@ -33,7 +38,7 @@ async function usuarios() {
     await prisma.usuario.upsert({
       where: { usuario: u.usuario },
       update: {},
-      create: { usuario: u.usuario, nome: u.nome, senhaHash: await bcrypt.hash(u.senha, 10), papel: u.papel }
+      create: { usuario: u.usuario, nome: u.nome, senhaHash: await bcrypt.hash(u.senha, 10), papel: u.papel, trocaSenhaObrigatoria: EXIGE_TROCA }
     });
   }
 }

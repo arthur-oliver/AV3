@@ -46,7 +46,7 @@ export class UsuarioServico {
     const senhaHash = await gerarHashSenha(dados.senha);
 
     return prisma.$transaction(async (tx) => {
-      const criado = await this.usuarios.criar({ usuario: dados.usuario, nome, senhaHash, papel: dados.papel }, tx);
+      const criado = await this.usuarios.criar({ usuario: dados.usuario, nome, senhaHash, papel: dados.papel, trocaSenhaObrigatoria: true }, tx);
       await registrarJournal(tx, {
         operacao: 'CRIAR',
         entidade: 'Usuario',
@@ -136,7 +136,8 @@ export class UsuarioServico {
     });
   }
 
-  // O superusuário define uma nova senha (por exemplo, quando alguém esquece a própria).
+  // O superusuário define uma senha PROVISÓRIA (por exemplo, quando alguém esquece a própria): no próximo
+  // login a pessoa é obrigada a escolher uma senha só dela.
   async redefinirSenha(id: string, novaSenha: string, responsavel: Responsavel): Promise<void> {
     if (id === responsavel.id) {
       throw new RegraNegocio('Para trocar a sua própria senha use POST /auth/alterar-senha (exige a senha atual).');
@@ -148,7 +149,7 @@ export class UsuarioServico {
       const atual = await this.usuarios.buscarPorId(id, tx);
       if (!atual) throw new NaoEncontrado('Usuário');
       login = atual.usuario;
-      await this.usuarios.atualizar(id, { senhaHash }, tx);
+      await this.usuarios.atualizar(id, { senhaHash, trocaSenhaObrigatoria: true }, tx);
       await registrarJournal(tx, {
         operacao: 'ATUALIZAR',
         entidade: 'Usuario',

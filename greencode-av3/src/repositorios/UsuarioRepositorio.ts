@@ -12,6 +12,7 @@ export const usuarioPublico = {
   nome: true,
   papel: true,
   ativo: true,
+  trocaSenhaObrigatoria: true,
   ultimoAcesso: true,
   criadoEm: true,
   atualizadoEm: true,

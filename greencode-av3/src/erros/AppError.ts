@@ -29,6 +29,13 @@ export class SemPermissao extends AppError {
   }
 }
 
+// 403 especial: a senha atual é provisória e precisa ser trocada antes de qualquer outra operação.
+export class TrocaSenhaObrigatoria extends AppError {
+  constructor(message = 'Você precisa trocar a senha provisória antes de continuar. Use POST /auth/alterar-senha.') {
+    super(message, 403, 'TROCA_SENHA_OBRIGATORIA');
+  }
+}
+
 export class NaoEncontrado extends AppError {
   constructor(entidade: string) {
     super(`${entidade} não encontrado(a).`, 404, 'NAO_ENCONTRADO');

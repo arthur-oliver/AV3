@@ -9,7 +9,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
     {
       schema: {
         tags: ['Autenticação'],
-        summary: 'Login: devolve um token JWT',
+        summary: 'Login: devolve um token JWT. Se trocaSenhaObrigatoria=true, só /auth/me e /auth/alterar-senha funcionam até a senha ser trocada',
         body: {
           type: 'object',
           required: ['usuario', 'senha'],
@@ -25,7 +25,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/auth/me',
-    { preHandler: app.autenticar, schema: { tags: ['Autenticação'], summary: 'Dados do usuário logado', security: [{ bearerAuth: [] }] } },
+    { preHandler: app.autenticarPermitindoTroca, schema: { tags: ['Autenticação'], summary: 'Dados do usuário logado', security: [{ bearerAuth: [] }] } },
     c.eu
   );
 
@@ -50,10 +50,10 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
   app.post<{ Body: { senhaAtual: string; novaSenha: string } }>(
     '/auth/alterar-senha',
     {
-      preHandler: app.autenticar,
+      preHandler: app.autenticarPermitindoTroca,
       schema: {
         tags: ['Autenticação'],
-        summary: 'Altera a própria senha (qualquer usuário logado)',
+        summary: 'Altera a própria senha (qualquer usuário logado). Obrigatória no primeiro acesso, quando o login devolve trocaSenhaObrigatoria=true. A nova senha deve ser diferente da atual',
         security: [{ bearerAuth: [] }],
         body: {
           type: 'object',

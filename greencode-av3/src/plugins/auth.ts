@@ -3,7 +3,7 @@ import jwt from '@fastify/jwt';
 import { config } from '../config';
 import { prisma } from '../lib/prisma';
 import type { PapelUsuario } from '../dominio/enums';
-import { NaoAutenticado, SemPermissao } from '../erros/AppError';
+import { NaoAutenticado, SemPermissao, TrocaSenhaObrigatoria } from '../erros/AppError';
 
 export interface UsuarioToken {
   sub: string; // id do usuário
@@ -24,6 +24,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     /** preHandler: exige token JWT válido e usuário ativo. Preenche req.user. */
     autenticar: Hook;
+    /** Igual a autenticar, mas deixa passar quem ainda precisa trocar a senha provisória (só para /auth/me e /auth/alterar-senha). */
+    autenticarPermitindoTroca: Hook;
     /** preHandler: exige autenticação + um dos papéis informados. */
     autorizar: (...papeis: readonly PapelUsuario[]) => Hook;
   }
@@ -39,7 +41,7 @@ export async function registrarAuth(app: FastifyInstance): Promise<void> {
     sign: { expiresIn: config.jwtExpiraEm }
   });
 
-  const autenticar: Hook = async (req) => {
+  const criarAutenticar = (permitirTrocaPendente: boolean): Hook => async (req) => {
     try {
       await req.jwtVerify(); // valida assinatura e expiração; injeta o payload em req.user
     } catch {
@@ -48,12 +50,16 @@ export async function registrarAuth(app: FastifyInstance): Promise<void> {
     // Um usuário desativado perde o acesso mesmo com token ainda válido.
     // O papel também vem do banco: se o administrador trocou o papel da pessoa, vale na hora (e não só
     // quando o token expirar).
-    const u = await prisma.usuario.findUnique({ where: { id: req.user.sub }, select: { ativo: true, papel: true } });
+    const u = await prisma.usuario.findUnique({ where: { id: req.user.sub }, select: { ativo: true, papel: true, trocaSenhaObrigatoria: true } });
     if (!u || !u.ativo) throw new NaoAutenticado('Usuário inativo ou inexistente.');
+    // Senha provisória: nada funciona até a pessoa escolher a própria senha.
+    if (u.trocaSenhaObrigatoria && !permitirTrocaPendente) throw new TrocaSenhaObrigatoria();
     req.user = { ...req.user, papel: u.papel };
   };
 
+  const autenticar = criarAutenticar(false);
   app.decorate('autenticar', autenticar);
+  app.decorate('autenticarPermitindoTroca', criarAutenticar(true));
 
   app.decorate('autorizar', (...papeis: readonly PapelUsuario[]): Hook => {
     return async (req, reply) => {
