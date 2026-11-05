@@ -33,6 +33,7 @@ As rotas descritas nas seções abaixo, de "Sistema e autenticação" a "Relató
 | 403 | `SEM_PERMISSAO` | O papel do usuário não permite a operação |
 | 404 | `NAO_ENCONTRADO` | Registro inexistente |
 | 409 | `CONFLITO` | CNPJ/código duplicado ou versão desatualizada |
+| 403 | `TROCA_SENHA_OBRIGATORIA` | Senha provisória ainda não trocada (usuário novo ou senha redefinida pelo superusuário) |
 | 429 | `MUITAS_TENTATIVAS` | Login bloqueado por 15 minutos após 5 senhas erradas seguidas |
 | 422 | `REGRA_NEGOCIO` | Regra violada (transição de status, justificativa, desmonte antes da triagem...) |
 | 500 | `ERRO_INTERNO` | Falha inesperada (detalhe apenas no log do servidor) |
@@ -64,7 +65,7 @@ As rotas descritas nas seções abaixo, de "Sistema e autenticação" a "Relató
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
 | GET | `/health` | público | Saúde do servidor e do banco |
-| POST | `/auth/login` | público | `{usuario, senha}` → `{token, tipo, expiraEm, usuario}` |
+| POST | `/auth/login` | público | `{usuario, senha}` → `{token, tipo, expiraEm, trocaSenhaObrigatoria, usuario}` — se `trocaSenhaObrigatoria` for `true`, só `/auth/me` e `/auth/alterar-senha` funcionam até a troca (as demais rotas respondem 403 `TROCA_SENHA_OBRIGATORIA`) |
 | GET | `/auth/me` | L | Dados do usuário logado (`id`, `usuario`, `nome`, `papel`, `versao`) |
 | PUT | `/auth/perfil` | L | `{nome, versao}` — o usuário altera o **próprio** nome |
 | POST | `/auth/alterar-senha` | L | Altera a **própria** senha: `{senhaAtual, novaSenha}` (8–72 caracteres, letra + número) |

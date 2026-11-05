@@ -10,7 +10,7 @@ RESUMO (depois de instalar Node.js e MySQL e criar o banco "greencode_av3"):
      npm install
      npm run setup               (cria as tabelas e os dados de exemplo)
      npm test                    (testes automatizados)
-     npm run dev                 (sobe a API em http://127.0.0.1:3000)
+     npm run dev                 (compila o portal React, se preciso, e sobe a API em http://127.0.0.1:3000)
 
 Os detalhes de cada etapa estão abaixo.
 
@@ -159,8 +159,6 @@ Os detalhes de cada etapa estão abaixo.
 
         npm run dev
 
-     Resultado esperado: mensagem "Server listening at
-     http://0.0.0.0:3000" no terminal. Deixe esta janela aberta.
      Para parar: Ctrl+C (o encerramento é seguro).
 
  6.2 Teste a saúde do sistema no navegador:
@@ -174,7 +172,7 @@ Os detalhes de cada etapa estão abaixo.
 ---------------------------------------------------------------------
  7. USAR O PORTAL WEB (como o usuário externo)
 ---------------------------------------------------------------------
- Abra http://127.0.0.1:3000 no navegador. A tela de entrada tem duas abas.
+ Abra http://127.0.0.1:3000/app no navegador. A tela de entrada tem duas abas.
 
  7.0 SOU PARCEIRO (entra com a chave de API)
      1) No terminal, na pasta greencode-av3, gere uma chave de teste:
@@ -192,8 +190,43 @@ Os detalhes de cada etapa estão abaixo.
      4) No canto inferior do menu há a barra do limite de requisições
         por minuto da chave.
 
+ PORTAL EM REACT + TAILWIND
+     O código da interface está em "frontend/" (React e Tailwind CSS).
+     O comando abaixo compila e gera a pasta "web/", que o servidor da
+     API entrega em /app/ (o "npm run dev" já faz isso se a pasta não
+     existir; depois de mudar algo em "frontend/", rode de novo):
+
+        npm run build:web
+
+     Para desenvolver a interface com recarga automática (API na porta
+     3000 e o portal em http://127.0.0.1:5173/app/), use dois terminais:
+
+        npm run dev           (terminal 1)
+        npm run dev:web       (terminal 2)
+
+     Para fazer as três coisas de uma vez (compilar o portal, subir a API e o
+     portal em desenvolvimento), use um único comando:
+
+        npm run dev:tudo
+
  7.0.1 EQUIPE INTERNA (usuário e senha)
-     Aba "Equipe interna". Usuários de exemplo (veja a seção de
+     Aba "Equipe interna".
+
+     TROCA DE SENHA NO PRIMEIRO ACESSO
+     Todo usuário criado pelo superusuário (tela "Usuários") ou que teve a
+     senha redefinida por ele recebe uma senha PROVISÓRIA. No primeiro
+     login o portal abre uma tela cheia "Defina a sua senha" e nada mais
+     fica disponível até a troca: informa-se a senha provisória, a nova
+     senha (8 a 72 caracteres, com letra e número, diferente da atual) e
+     a confirmação. A API também bloqueia (403 TROCA_SENHA_OBRIGATORIA)
+     todas as outras rotas enquanto a troca estiver pendente; só
+     /auth/me e /auth/alterar-senha continuam liberadas.
+     Os usuários de exemplo do seed NÃO são obrigados a trocar, para
+     facilitar a correção. Para testar o fluxo com eles, rode o seed com
+     SEED_EXIGE_TROCA=true (Windows: set SEED_EXIGE_TROCA=true antes de
+     npm run db:reset), ou crie um usuário novo logado como superusuario.
+
+     Usuários de exemplo (veja a seção de
      usuários criados pelo seed): superusuario, admin, operador, gestor
      e auditor. O menu muda conforme o papel, igual à API:
 

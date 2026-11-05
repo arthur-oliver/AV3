@@ -12,7 +12,7 @@ API REST em Node.js e TypeScript para apoiar a **logística reversa de resíduos
 | --- | --- |
 | Camada analítica | Três análises persistidas em tabela, com histórico: **eficiência operacional** (taxas, tempos de ciclo, gargalo), **rentabilidade por tipo de equipamento** (receita, custo e margem) e **vida útil restante** por regressão linear (OLS) |
 | Execução das análises | Sob demanda por endpoint e **agendada** (node-cron), para o escopo global e para cada organização |
-| Portal web | Interface no navegador servida pelo próprio servidor (`/app/`): o parceiro entra com a chave de API e consulta lotes, rastreia equipamentos, registra lotes, vê análises e baixa relatórios; a equipe interna entra com usuário e senha e vê, conforme o papel, usuários (só o superusuário), organizações e contratos, lotes, equipamentos, relatórios, auditoria, análises, chaves e fila |
+| Portal web | Interface em React + Tailwind, no navegador, servida pelo próprio servidor (`/app/`): o parceiro entra com a chave de API e consulta lotes, rastreia equipamentos, registra lotes, vê análises e baixa relatórios; a equipe interna entra com usuário e senha e vê, conforme o papel, usuários (só o superusuário), organizações e contratos, lotes, equipamentos, relatórios, auditoria, análises, chaves e fila |
 | API pública | Rotas para parceiros com **chave de API** (`X-API-Key`), permissões por chave, **limite de requisições por chave**, isolamento entre organizações e documentação Swagger com exemplos e códigos de erro |
 | Processamento assíncrono | Relatórios em **fila no MySQL**: o pedido devolve um id (202), o status é consultado em outro endpoint e o arquivo (JSON ou CSV) é baixado ao final, com **retry** de espera crescente |
 | Organização e versionamento | Rotas separadas em `/api/v1/internal`, `/api/v1/admin` e `/api/v1/public`; cabeçalho `X-API-Version`; rotas antigas da AV2 mantidas como **deprecadas** (`Deprecation`, `Sunset`, `Link`) |
@@ -78,10 +78,32 @@ AV3/
     │   ├── fila/             # worker e processador de relatórios
     │   ├── rotas/            # internal, admin e public (versão 1)
     │   └── ...               # controllers, serviços, repositórios, regras, segurança
-    ├── web/                  # portal web (HTML, CSS e JS, sem etapa de build)
+    ├── web/                  # portal compilado (gerado por "npm run build:web"; não vai para o Git)
+    ├── frontend/             # código do portal: React + Tailwind CSS (Vite)
     ├── prisma/               # modelo do banco, migrações e dados de exemplo
     └── tests/                # testes unitários e de integração
 ```
+
+## Endereços do sistema
+
+Com o projeto rodando (npm run dev:tudo), estes são os endereços:
+
+| Endereço | O que é |
+|---|---|
+| http://127.0.0.1:3000/app/ | **Portal web** compilado, entregue pelo servidor da API. É o endereço para usar e apresentar. |
+| http://localhost:5173/app/ | **Portal em desenvolvimento** (Vite), com recarga automática ao editar `frontend/`. Só existe com `npm run dev:tudo` ou `npm run dev:web`. |
+| http://127.0.0.1:3000/docs | **Swagger**: documentação interativa da API. |
+| http://127.0.0.1:3000/health | **Saúde da API**: responde se o servidor está no ar. |
+
+### Rodar tudo com um comando
+
+Dentro de `greencode-av3`, depois do `npm install` e do `npm run setup`:
+
+```
+npm run dev:tudo
+```
+
+Esse comando compila o portal (`build:web`), sobe a API (`dev`) e o portal em desenvolvimento (`dev:web`), nos endereços acima. `Ctrl+C` encerra os dois. Os comandos separados continuam disponíveis: `npm run build:web`, `npm run dev` e `npm run dev:web`.
 
 ## Documentação
 

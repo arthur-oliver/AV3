@@ -187,6 +187,8 @@ BOM UTF-8, porque é o que o Excel em português abre sem assistente de importa�
 - Erros internos não vazam detalhes (resposta genérica 500; detalhe só no log).
 - Autorização por papel em todas as rotas protegidas; contas podem ser desativadas; o papel é conferido no banco a cada requisição.
 - Bloqueio temporário do login após 5 falhas seguidas (429) e redefinição de senha pelo superusuário.
+- **Troca de senha obrigatória no primeiro acesso.** A coluna `trocaSenhaObrigatoria` fica ligada para usuários criados pelo superusuário e para senhas redefinidas por ele. O `preHandler` de autenticação consulta o banco a cada requisição (e não uma marca no JWT), então a troca vale na hora e o token antigo não contorna o bloqueio; só `/auth/me` e `/auth/alterar-senha` ficam liberadas. A nova senha precisa ser diferente da atual. No portal, uma tela cheia substitui o menu até a troca.
+- **Portal.** React + Tailwind CSS em `frontend/`, compilado pelo Vite para `web/` e servido pelo Fastify em `/app/` (lista fixa de arquivos montada ao subir, sem caminho vindo da URL).
 - **Limitações conhecidas:** sem *rate limiting* por IP (só o bloqueio por login, em memória), sem HTTPS embutido (use proxy reverso em produção),
   sem refresh token, sem criptografia de dados em repouso no banco (na AV1 os arquivos eram AES-256; em produção,
   use criptografia de disco/volume do banco).
