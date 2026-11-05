@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "npm run build:web && tsc",
     "start": "node dist/server.js",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -18,7 +18,11 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "setup": "prisma migrate dev --name inicial && prisma db seed"
+    "setup": "prisma migrate dev --name inicial && prisma db seed",
+    "build:web": "vite build --config frontend/vite.config.js",
+    "dev:web": "vite --config frontend/vite.config.js",
+    "dev:tudo": "node scripts/dev-tudo.js",
+    "predev": "node -e \"require('fs').existsSync('web/index.html')||process.exit(1)\" || npm run build:web"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -38,12 +42,18 @@
     "simple-statistics": "^7.8.7"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.2",
     "@types/node-cron": "^3.0.11",
+    "@vitejs/plugin-react": "^5.0.0",
     "prisma": "^6.19.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.2",
+    "vite": "^7.0.0",
     "vitest": "^2.1.8"
   },
   "engines": {

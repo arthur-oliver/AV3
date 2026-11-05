@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* Paleta: papel verde-névoa, tinta verde quase preta, verde de ação. Escuro automático pelo sistema. */
+:root {
+  --papel: #edf1ee;
+  --superficie: #f9fbfa;
+  --tinta: #13241d;
+  --suave: #4d6358;
+  --linha: #c6d2cb;
+  --acao: #0f6e58;
+  --acao-escura: #0a4f40;
+  --sinal: #c98a00;
+  --erro: #a3262a;
+  --ok: #1f7a46;
+  --lateral: #13241d;
+  --lateral-brilho: #6fd0b3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --papel: #0f1a15;
+    --superficie: #16251e;
+    --tinta: #e6efe9;
+    --suave: #9bb3a6;
+    --linha: #2a3f35;
+    --acao: #3fb594;
+    --acao-escura: #6fd0b3;
+    --sinal: #e0aa2e;
+    --erro: #ef7a7e;
+    --ok: #5fcf8e;
+    --lateral: #0a120e;
+  }
+}
+
+@theme inline {
+  --color-papel: var(--papel);
+  --color-superficie: var(--superficie);
+  --color-tinta: var(--tinta);
+  --color-suave: var(--suave);
+  --color-linha: var(--linha);
+  --color-acao: var(--acao);
+  --color-acao-escura: var(--acao-escura);
+  --color-sinal: var(--sinal);
+  --color-erro: var(--erro);
+  --color-ok: var(--ok);
+  --color-lateral: var(--lateral);
+  --color-brilho: var(--lateral-brilho);
+  --font-titulo: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+}
+
+html {
+  color-scheme: light dark;
+}
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+:focus-visible {
+  outline: 2px solid var(--acao);
+  outline-offset: 2px;
+}
+dialog::backdrop {
+  background: rgb(10 18 14 / 0.55);
+}
+
+/* Única animação não pedida pelo usuário: a trilha da tela de entrada acende, estação por estação. */
+@keyframes acende {
+  from { opacity: 0.15; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .acende { animation: acende 0.5s both; animation-delay: calc(var(--i) * 0.35s); }
+}
+
+/* Arthur Oliver Rossi Alves, autor do Greencode. */
