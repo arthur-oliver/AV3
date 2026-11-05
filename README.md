@@ -90,7 +90,7 @@ Com o projeto rodando (npm run dev:tudo), estes são os endereços:
 
 | Endereço | O que é |
 |---|---|
-| http://127.0.0.1:3000/app/ | **Portal web** compilado, entregue pelo servidor da API. É o endereço para usar e apresentar. |
+| http://127.0.0.1:3000/app/ | **Portal web** compilado, entregue pelo servidor da API. |
 | http://localhost:5173/app/ | **Portal em desenvolvimento** (Vite), com recarga automática ao editar `frontend/`. Só existe com `npm run dev:tudo` ou `npm run dev:web`. |
 | http://127.0.0.1:3000/docs | **Swagger**: documentação interativa da API. |
 | http://127.0.0.1:3000/health | **Saúde da API**: responde se o servidor está no ar. |
