@@ -1,33 +1,38 @@
 @import "tailwindcss";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 
-/* Paleta: papel verde-névoa, tinta verde quase preta, verde de ação. Escuro automático pelo sistema. */
+/* Paleta: branco com tinta verde-floresta e ação em verde vivo; âmbar só para "em andamento". Cantos retos e sombras sólidas. Escuro automático pelo sistema. */
 :root {
-  --papel: #edf1ee;
-  --superficie: #f9fbfa;
-  --tinta: #13241d;
-  --suave: #4d6358;
-  --linha: #c6d2cb;
-  --acao: #0f6e58;
-  --acao-escura: #0a4f40;
-  --sinal: #c98a00;
-  --erro: #a3262a;
-  --ok: #1f7a46;
-  --lateral: #13241d;
-  --lateral-brilho: #6fd0b3;
+  --papel: #f4faf6;
+  --superficie: #ffffff;
+  --tinta: #0b3d2a;
+  --suave: #4b6b5c;
+  --linha: #0b3d2a;
+  --acao: #15803d;
+  --acao-escura: #166534;
+  --sinal: #b45309;
+  --erro: #c81e1e;
+  --ok: #15803d;
+  --lateral: #0b3d2a;
+  --lateral-brilho: #4ade80;
+  --sombra: #0b3d2a;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --papel: #0f1a15;
-    --superficie: #16251e;
-    --tinta: #e6efe9;
-    --suave: #9bb3a6;
-    --linha: #2a3f35;
-    --acao: #3fb594;
-    --acao-escura: #6fd0b3;
-    --sinal: #e0aa2e;
-    --erro: #ef7a7e;
-    --ok: #5fcf8e;
-    --lateral: #0a120e;
+    --papel: #0a1a12;
+    --superficie: #11261b;
+    --tinta: #effdf4;
+    --suave: #a6c4b3;
+    --linha: #effdf4;
+    --acao: #16a34a;
+    --acao-escura: #15803d;
+    --sinal: #b45309;
+    --erro: #f87171;
+    --ok: #4ade80;
+    --lateral: #06110b;
+    --sombra: #1f5a3f;
   }
 }
 
@@ -44,8 +49,13 @@
   --color-ok: var(--ok);
   --color-lateral: var(--lateral);
   --color-brilho: var(--lateral-brilho);
-  --font-titulo: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
-  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+  --color-sombra: var(--sombra);
+  --font-titulo: "Space Grotesk Variable", "Arial Black", "Helvetica Neue", sans-serif;
+  --font-sans: "Space Grotesk Variable", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
 }
 
 html {
@@ -53,24 +63,37 @@ html {
 }
 body {
   margin: 0;
-  background: var(--papel);
+  background-color: var(--papel);
+  /* grade pontilhada discreta no fundo */
+  background-image: radial-gradient(color-mix(in srgb, var(--tinta) 14%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
   color: var(--tinta);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.55;
+}
+/* Os cantos ficam retos em todo o portal. */
+.rounded,
+.rounded-sm,
+.rounded-md {
+  border-radius: 0;
 }
 :focus-visible {
-  outline: 2px solid var(--acao);
-  outline-offset: 2px;
+  outline: 3px solid var(--acao);
+  outline-offset: 3px;
 }
 dialog::backdrop {
-  background: rgb(10 18 14 / 0.55);
+  background: color-mix(in srgb, var(--acao) 22%, rgb(20 19 31 / 0.6));
+}
+::selection {
+  background: var(--acao);
+  color: #fff;
 }
 
 /* Única animação não pedida pelo usuário: a trilha da tela de entrada acende, estação por estação. */
 @keyframes acende {
-  from { opacity: 0.15; transform: scale(0.6); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0.15; transform: translateY(8px) rotate(-45deg); }
+  to { opacity: 1; transform: translateY(0) rotate(0); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .acende { animation: acende 0.5s both; animation-delay: calc(var(--i) * 0.35s); }

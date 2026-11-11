@@ -74,7 +74,7 @@ export function TrocaSenhaTela() {
   }
   return (
     <div className="grid min-h-screen place-items-center px-4 py-10">
-      <div className="w-full max-w-[460px] rounded border border-linha bg-superficie p-6 sm:p-8">
+      <div className="w-full max-w-[640px] border-[3px] border-t-[12px] border-linha border-t-acao bg-superficie p-6 shadow-[10px_10px_0_var(--sombra)] sm:p-8">
         <Cabeca titulo="Defina a sua senha" texto={`Olá, ${s.nome || s.usuario}. A senha que você recebeu é provisória. Para continuar, escolha uma senha só sua.`} />
         <FormSenha forcado aoConcluir={concluir} />
         <p className="mt-5 text-[0.88rem] text-suave">

@@ -77,7 +77,7 @@ function VidaUtil({ r }) {
       <Suave>Modelo: {r.modelo}. Ano de referência: {r.anoReferencia}.</Suave>
       {r.porTipo.map((t) => (
         <Painel key={t.tipo} className="mt-3">
-          <h3 className="mb-2 font-titulo text-[1.05rem] font-semibold">{rotulo(TIPOS, t.tipo)} <Selo>{t.quantidade} equipamento(s)</Selo></h3>
+          <h3 className="mb-2 w-fit border-b-2 border-acao font-mono text-[0.9rem] font-semibold uppercase tracking-[0.1em]">{rotulo(TIPOS, t.tipo)} <Selo>{t.quantidade} equipamento(s)</Selo></h3>
           {t.regressao && (
             <Indicadores itens={[
               ['Desgaste por ano', num(t.regressao.inclinacao, 3)], ['Ajuste (R²)', num(t.regressao.r2, 2)], ['Confiança', t.confianca ? CONFIANCA[t.confianca] : '-'],

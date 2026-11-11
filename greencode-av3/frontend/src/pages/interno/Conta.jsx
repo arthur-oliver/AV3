@@ -41,7 +41,7 @@ export function InicioInterno() {
     <div>
       <Cabeca titulo={`Olá${eu && (eu.nome || eu.usuario) ? `, ${eu.nome || eu.usuario}` : ''}`} texto={eu ? PAPEL_TEXTO[eu.papel] : ''} />
       <Painel className="max-w-[640px]">
-        <p className="m-0">Use o menu ao lado para trabalhar. O que o seu papel não permite alterar aparece apenas para consulta.</p>
+        <p className="m-0">Use o menu no topo para trabalhar. O que o seu papel não permite alterar aparece apenas para consulta.</p>
       </Painel>
     </div>
   );

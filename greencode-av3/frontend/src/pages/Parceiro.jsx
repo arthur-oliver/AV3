@@ -11,7 +11,7 @@ export function InicioParceiro() {
     <div>
       <Cabeca titulo="Seu painel" texto="Acompanhe os equipamentos enviados, registre novos lotes e consulte as análises da sua organização." />
       <Painel>
-        <h3 className="mb-1 font-titulo text-[1.05rem] font-semibold">{s.nome}</h3>
+        <h3 className="mb-1 w-fit border-b-2 border-acao font-mono text-[0.9rem] font-semibold uppercase tracking-[0.1em]">{s.nome}</h3>
         <Suave>Organização {s.organizacaoId}</Suave>
         <H3>O que esta chave permite</H3>
         <ul className="ml-5 list-disc">
@@ -21,7 +21,7 @@ export function InicioParceiro() {
           })}
         </ul>
       </Painel>
-      <Suave className="mt-4">Cada chave tem um limite de requisições por minuto, mostrado no menu lateral. Ao atingir o limite, aguarde alguns segundos.</Suave>
+      <Suave className="mt-4">Cada chave tem um limite de requisições por minuto, mostrado no cabeçalho. Ao atingir o limite, aguarde alguns segundos.</Suave>
     </div>
   );
 }
@@ -138,7 +138,7 @@ export function NovoLoteParceiro() {
       </Painel>
       {resultado && (
         <Painel>
-          <h3 className="mb-1 font-titulo text-[1.05rem] font-semibold">Lote registrado</h3>
+          <h3 className="mb-1 w-fit border-b-2 border-acao font-mono text-[0.9rem] font-semibold uppercase tracking-[0.1em]">Lote registrado</h3>
           <p>Foram cadastrados {resultado.equipamentos.length} equipamento(s). Guarde os códigos para rastrear:</p>
           <Tabela linhas={resultado.equipamentos} colunas={[{ titulo: 'Tipo', ver: (e) => rotulo(TIPOS, e.tipo) }, { titulo: 'Código', ver: (e) => e.codigoBarrasInterno }]} />
           <p className="mt-3"><a className="text-acao underline" href={`#/lotes/${resultado.id}`}>Abrir o lote</a></p>

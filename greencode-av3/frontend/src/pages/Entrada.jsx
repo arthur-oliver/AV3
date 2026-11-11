@@ -6,25 +6,33 @@ import { Botao, Campo, ETAPAS, Entrada as Input, Trilha } from '../components/ui
 export default function Entrada() {
   const [aba, setAba] = useState('parceiro');
   return (
-    <div className="grid min-h-screen md:grid-cols-[1.2fr_1fr]">
-      <section className="flex flex-col justify-center bg-lateral p-[clamp(1.5rem,5vw,4rem)] text-[#e6efe9]">
-        <h1 className="mb-3 max-w-[20ch] font-titulo text-[clamp(2rem,4.2vw,3.2rem)] font-semibold leading-[1.1] tracking-tight">Cada equipamento, do recebimento à baixa.</h1>
-        <p className="max-w-[48ch] text-[#b9cdc2]">Acompanhe o caminho dos seus eletrônicos descartados, registre novos lotes e consulte quanto material foi recuperado.</p>
-        <div aria-hidden="true" className="max-w-[560px]">
-          <Trilha visitados={new Set(ETAPAS.flatMap(([, s]) => s))} atual="" escura animada />
-        </div>
-      </section>
-      <section className="flex max-w-[520px] flex-col justify-center p-[clamp(1.5rem,5vw,3.5rem)]">
-        <h2 className="mb-4 font-titulo text-[1.5rem] font-semibold">Entrar</h2>
-        <div role="tablist" className="mb-5 flex border-b border-linha">
-          {[['parceiro', 'Sou parceiro'], ['interno', 'Equipe interna']].map(([k, t]) => (
-            <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => setAba(k)}
-              className={`-mb-px cursor-pointer border-0 border-b-2 bg-transparent px-4 py-2 ${aba === k ? 'border-acao font-semibold text-acao' : 'border-transparent text-suave'}`}>{t}</button>
-          ))}
-        </div>
-        {aba === 'parceiro' ? <FormParceiro /> : <FormInterno />}
-        <p className="mt-6 text-[0.9rem] text-suave">Desenvolvedor? A documentação da API está no <a className="text-acao underline" href="/docs">Swagger</a>.</p>
-      </section>
+    <div className="flex min-h-screen flex-col">
+      <div className="border-b-[3px] border-linha bg-superficie px-[clamp(1rem,4vw,3rem)] py-3">
+        <span className="font-titulo text-[1.3rem] font-bold uppercase tracking-[-0.03em]"><span aria-hidden="true" className="mr-2 inline-block h-3 w-3 rotate-45 bg-acao" />Greencode</span>
+      </div>
+      <div className="mx-auto grid w-full max-w-[1240px] flex-1 items-center gap-10 px-[clamp(1rem,4vw,3rem)] py-12 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+        <section className="order-2 border-[3px] border-linha bg-superficie shadow-[10px_10px_0_var(--sombra)] lg:order-1">
+          <h2 className="m-0 bg-tinta px-6 py-3 font-titulo text-[1.3rem] font-bold uppercase tracking-tight text-papel">Entrar</h2>
+          <div className="p-6">
+            <div role="tablist" className="mb-6 grid grid-cols-2 border-2 border-linha">
+              {[['parceiro', 'Sou parceiro'], ['interno', 'Equipe interna']].map(([k, t]) => (
+                <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => setAba(k)}
+                  className={`cursor-pointer border-0 px-3 py-2.5 font-mono text-[0.75rem] font-semibold uppercase tracking-wider ${aba === k ? 'bg-acao text-white' : 'bg-transparent text-suave hover:bg-papel'}`}>{t}</button>
+              ))}
+            </div>
+            {aba === 'parceiro' ? <FormParceiro /> : <FormInterno />}
+          </div>
+          <p className="m-0 border-t-2 border-linha bg-papel px-6 py-3 font-mono text-[0.78rem] text-suave">Desenvolvedor? A documentação da API está no <a className="font-semibold text-acao underline" href="/docs">Swagger</a>.</p>
+        </section>
+        <section className="order-1 lg:order-2">
+          <p className="mb-4 inline-block bg-sinal px-2 py-0.5 font-mono text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white">Rastreabilidade de eletrônicos</p>
+          <h1 className="mb-5 max-w-[16ch] font-titulo text-[clamp(2.4rem,6vw,5rem)] font-bold uppercase leading-[0.9] tracking-[-0.05em]">Cada equipamento, do recebimento à <span className="text-acao">baixa.</span></h1>
+          <p className="max-w-[52ch] font-mono text-[0.9rem] text-suave">Acompanhe o caminho dos seus eletrônicos descartados, registre novos lotes e consulte quanto material foi recuperado.</p>
+          <div aria-hidden="true" className="max-w-[680px]">
+            <Trilha visitados={new Set(ETAPAS.flatMap(([, s]) => s))} atual="" animada />
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -44,7 +52,7 @@ function FormParceiro() {
   }
   return (
     <form onSubmit={enviar}>
-      <p className="mb-3 text-suave">Use a chave de API que a equipe do Greencode entregou à sua organização.</p>
+      <p className="mb-4 text-[0.92rem] text-suave">Use a chave de API que a equipe do Greencode entregou à sua organização.</p>
       <Campo rotulo="Chave de API">{(id) => <Input id={id} type="password" autoComplete="off" required placeholder="gck_..." value={chave} onChange={(e) => setChave(e.target.value)} />}</Campo>
       <Botao type="submit" disabled={enviando}>Entrar</Botao>
     </form>
