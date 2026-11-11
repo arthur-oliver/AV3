@@ -68,7 +68,7 @@ export function RelatoriosConsulta() {
           <Tabela vazio="Nenhum contrato vigente no período." linhas={d.contratos} colunas={[{ titulo: 'Organização', ver: (c) => c.organizacao.razaoSocial }, { titulo: 'Valor mensal', num: true, ver: (c) => reais(c.valorMensal) }, { titulo: 'Vencimento', ver: (c) => data(c.dataVencimento).slice(0, 10) }, { titulo: 'Renovação automática', ver: (c) => sn(c.renovacaoAutomatica) }]} />
         </div>
       )}
-      {d && <Acoes><Botao variante="sec" onClick={() => baixar(url(true), 'relatorio.csv')}>Baixar CSV (abre no Excel)</Botao></Acoes>}
+      {d && <Acoes><Botao variante="sec" onClick={() => baixar(url(true), 'relatorio.csv')}>Baixar CSV</Botao></Acoes>}
     </div>
   );
 }
@@ -106,7 +106,7 @@ export function Auditoria() {
             { titulo: '', ver: (x) => (
               <details>
                 <summary className="cursor-pointer text-acao">Ver</summary>
-                <pre className="mt-1 max-h-72 overflow-auto rounded bg-papel p-2 text-[0.8rem]">{`Antes:\n${json(x.dadosAntes)}\n\nDepois:\n${json(x.dadosDepois)}`}</pre>
+                <pre className="mt-1 max-h-72 overflow-auto border-2 border-linha bg-papel p-3 font-mono text-[0.78rem]">{`Antes:\n${json(x.dadosAntes)}\n\nDepois:\n${json(x.dadosDepois)}`}</pre>
               </details>) }]} />
           <Acoes><Botao variante="sec" onClick={() => baixar(url(filtro, true), 'auditoria.csv')}>Baixar CSV</Botao></Acoes>
         </div>

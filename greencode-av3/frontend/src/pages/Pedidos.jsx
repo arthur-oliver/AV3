@@ -63,7 +63,7 @@ export default function Pedidos() {
         <form onSubmit={pedir}>
           <LinhaCampos>
             <Campo rotulo="Relatório">{(id) => <Seletor id={id} opcoes={ANALISES} value={form.tipo} onChange={campo('tipo')} />}</Campo>
-            <Campo rotulo="Formato">{(id) => <Seletor id={id} opcoes={{ CSV: 'CSV (abre no Excel)', JSON: 'JSON' }} value={form.formato} onChange={campo('formato')} />}</Campo>
+            <Campo rotulo="Formato">{(id) => <Seletor id={id} opcoes={{ CSV: 'CSV', JSON: 'JSON' }} value={form.formato} onChange={campo('formato')} />}</Campo>
             <Campo rotulo="De (opcional)">{(id) => <Entrada id={id} type="date" value={form.ini} onChange={campo('ini')} />}</Campo>
             <Campo rotulo="Até (opcional)">{(id) => <Entrada id={id} type="date" value={form.fim} onChange={campo('fim')} />}</Campo>
             {interno && <Campo rotulo="Organização">{(id) => <Seletor id={id} opcoes={opcoesOrg} vazio="Todas as organizações" value={form.org} onChange={campo('org')} />}</Campo>}
