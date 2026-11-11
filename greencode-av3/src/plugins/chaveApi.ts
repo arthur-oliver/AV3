@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ChaveApiRepositorio } from '../repositorios/ChaveApiRepositorio';
 import { chaveConfere, prefixoDaChave } from '../seguranca/chaveApi';
-import { LimitadorPorChave } from '../seguranca/limitePorChave';
+import { LimitadorPorChave, type ResultadoLimite } from '../seguranca/limitePorChave';
 import { ChaveInvalida, LimiteDaChave, SemPermissao } from '../erros/AppError';
 import type { PermissaoApi } from '../dominio/enums';
 
@@ -16,6 +16,8 @@ export interface ChaveContexto {
 declare module 'fastify' {
   interface FastifyRequest {
     chaveApi: ChaveContexto | null;
+    /** Resultado do limite da chave nesta requisição (para repor os cabeçalhos X-RateLimit-* no envio). */
+    limiteChave: ResultadoLimite | null;
   }
   interface FastifyInstance {
     /** Hook da API pública: valida X-API-Key, aplica o limite da chave e exige as permissões informadas. */
@@ -25,8 +27,22 @@ declare module 'fastify' {
 
 const ATUALIZAR_USO_APOS_MS = 60_000;
 
+function definirCabecalhosDoLimite(reply: FastifyReply, lim: ResultadoLimite): void {
+  reply.header('X-RateLimit-Limit', String(lim.limite)).header('X-RateLimit-Remaining', String(lim.restante)).header('X-RateLimit-Reset', String(lim.reiniciaEmSegundos));
+}
+
 export async function registrarChaveApi(app: FastifyInstance, repo = new ChaveApiRepositorio(), limitador = new LimitadorPorChave()): Promise<void> {
   app.decorateRequest('chaveApi', null);
+  app.decorateRequest('limiteChave', null);
+
+  // O limite geral por IP (@fastify/rate-limit) roda depois desta checagem e grava os próprios X-RateLimit-*
+  // (ex.: 300/min), apagando os da chave. Aqui, no envio, os cabeçalhos voltam a ser os da chave. A exceção é o
+  // 429 do limite geral (a chave ainda tinha saldo): esse continua com os números do limite por IP.
+  app.addHook('onSend', async (req, reply, corpo) => {
+    const lim = req.limiteChave;
+    if (lim && !(reply.statusCode === 429 && lim.permitido)) definirCabecalhosDoLimite(reply, lim);
+    return corpo;
+  });
 
   app.decorate('exigirChave', (...permissoes: PermissaoApi[]) => async (req: FastifyRequest, reply: FastifyReply) => {
     const bruto = req.headers['x-api-key'];
@@ -41,7 +57,8 @@ export async function registrarChaveApi(app: FastifyInstance, repo = new ChaveAp
 
     // Limite por chave (janela de 1 minuto). Os cabeçalhos X-RateLimit-* seguem em todas as respostas.
     const lim = limitador.consumir(c.id, c.limitePorMinuto);
-    reply.header('X-RateLimit-Limit', String(lim.limite)).header('X-RateLimit-Remaining', String(lim.restante)).header('X-RateLimit-Reset', String(lim.reiniciaEmSegundos));
+    req.limiteChave = lim;
+    definirCabecalhosDoLimite(reply, lim);
     if (!lim.permitido) {
       reply.header('Retry-After', String(lim.reiniciaEmSegundos));
       throw new LimiteDaChave(`Limite de ${lim.limite} requisições por minuto excedido. Tente novamente em ${lim.reiniciaEmSegundos}s.`);
