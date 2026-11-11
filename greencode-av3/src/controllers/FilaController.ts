@@ -9,6 +9,9 @@ type ComId = { Params: { id: string } };
 const BASE = '/api/v1/internal/relatorios-assincronos';
 const BASE_ADMIN = '/api/v1/admin/fila/tarefas';
 
+type TarefaApresentavel = Parameters<typeof apresentarTarefa>[0];
+const apresentarTarefaAdmin = (t: TarefaApresentavel) => ({ ...apresentarTarefa(t, BASE_ADMIN), solicitadoPor: t.solicitadoPor });
+
 export class FilaController {
   constructor(
     private readonly fila = new FilaServico(),
@@ -31,14 +34,16 @@ export class FilaController {
 
   // --- admin: visão geral da fila ---
 
+  // Na visão admin a tarefa também mostra quem pediu (usuário interno ou "api:<nome da chave>").
+  // Fica fora das rotas internal/pública, que só mostram ao solicitante as próprias tarefas.
   listar = async (req: FastifyRequest<{ Querystring: { status?: StatusTarefa; tipo?: TipoAnalise; organizacaoId?: string; pagina?: number; limite?: number } }>, reply: FastifyReply) => {
     const p = await this.fila.listar(req.query);
-    return responderPagina(reply, { ...p, itens: p.itens.map((t) => apresentarTarefa(t, BASE_ADMIN)) });
+    return responderPagina(reply, { ...p, itens: p.itens.map(apresentarTarefaAdmin) });
   };
 
   resumo = async () => ({ porStatus: await this.fila.resumo() });
 
-  reenfileirar = async (req: FastifyRequest<ComId>) => apresentarTarefa(await this.fila.reenfileirar(req.params.id), BASE_ADMIN);
+  reenfileirar = async (req: FastifyRequest<ComId>) => apresentarTarefaAdmin(await this.fila.reenfileirar(req.params.id));
 
   // Dispara agora o mesmo trabalho do agendador (todas as análises, global e por organização).
   executarAgendadas = async () => this.analises.executarTodasAgendadas();

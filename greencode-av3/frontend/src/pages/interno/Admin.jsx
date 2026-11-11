@@ -43,7 +43,7 @@ export function Chaves() {
             <Campo rotulo="Requisições por minuto">{(i) => <Entrada id={i} type="number" min={1} max={10000} required value={f.lim} onChange={campo('lim')} />}</Campo>
             <Campo rotulo="Vale até (opcional)">{(i) => <Entrada id={i} type="date" value={f.exp} onChange={campo('exp')} />}</Campo>
           </LinhaCampos>
-          <fieldset className="mb-3 rounded border border-linha px-3 py-2">
+          <fieldset className="mb-4 border-2 border-linha border-l-[8px] border-l-sinal bg-superficie px-4 py-3">
             <legend className="px-1 text-[0.9rem] text-suave">Permissões</legend>
             {Object.entries(PERMISSOES).map(([k, v]) => (
               <label key={k} className="flex items-center gap-2 py-0.5"><input type="checkbox" className="h-4 w-4" checked={f.perm.includes(k)} onChange={() => marcar(k)} /> {v}</label>
@@ -54,9 +54,9 @@ export function Chaves() {
       </Painel>
       {nova && (
         <Painel>
-          <h3 className="m-0 mb-1 font-titulo text-[1.05rem] font-semibold">{nova.titulo}</h3>
+          <h3 className="m-0 mb-1 w-fit border-b-2 border-acao font-mono text-[0.9rem] font-semibold uppercase tracking-[0.1em]">{nova.titulo}</h3>
           <p>Copie agora e entregue ao parceiro. Por segurança, esta chave não será mostrada de novo.</p>
-          <code className="block break-all rounded bg-papel p-2.5 text-[0.9rem]">{nova.chave}</code>
+          <code className="block break-all border-2 border-dashed border-acao bg-papel p-3 font-mono text-[0.85rem]">{nova.chave}</code>
           <Acoes>
             <Botao variante="sec" onClick={() => navigator.clipboard && navigator.clipboard.writeText(nova.chave).then(() => avisar('Copiada', 'A chave foi copiada.'))}>Copiar chave</Botao>
             <Botao variante="sec" onClick={() => setNova(null)}>Já guardei</Botao>
@@ -86,7 +86,8 @@ export function Fila() {
   return (
     <div>
       <Cabeca titulo="Fila de relatórios" texto="Situação dos relatórios pedidos por parceiros e pela equipe." />
-      {resumo.dados && <Indicadores itens={Object.entries(resumo.dados).map(([k, v]) => [rotulo(nomes, k), v])} />}
+      {/* a API devolve { porStatus: { PENDENTE: n, ... } }; status sem tarefas não aparecem, então completamos com zero */}
+      {resumo.dados && <Indicadores itens={Object.keys(STATUS_TAREFA).map((k) => [rotulo(nomes, k), (resumo.dados.porStatus || {})[k] || 0])} />}
       <Acoes className="mb-3"><Botao variante="sec" onClick={atualizar}>Atualizar</Botao><Botao variante="sec" onClick={agendadas}>Rodar análises agendadas agora</Botao></Acoes>
       {tarefas.carregando && !tarefas.dados ? <Carregando /> : (
         <Tabela vazio="A fila está vazia." linhas={tarefas.dados} colunas={[

@@ -229,7 +229,7 @@ Resposta de uma análise: `{id, tipo, organizacaoId, origem (MANUAL|AGENDADA|TAR
 | PATCH | `/chaves-api/{id}/ativa` | `{ativa, versao}`: revoga ou reativa |
 | POST | `/chaves-api/{id}/rotacionar` | `{versao}`: gera segredo novo; o antigo deixa de valer |
 | GET | `/fila/resumo` | Quantidade de tarefas por status |
-| GET | `/fila/tarefas` | Lista as tarefas (filtros `status`, `tipo`, `organizacaoId`) |
+| GET | `/fila/tarefas` | Lista as tarefas (filtros `status`, `tipo`, `organizacaoId`); cada tarefa inclui `solicitadoPor` (usuário interno ou `api:<nome da chave>`) |
 | POST | `/fila/tarefas/{id}/reenfileirar` | Recoloca na fila uma tarefa em `FALHA` |
 | POST | `/analises/executar-agendadas` | Executa agora o trabalho do agendador (3 análises × global e cada organização) |
 

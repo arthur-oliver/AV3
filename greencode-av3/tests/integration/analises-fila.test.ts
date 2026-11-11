@@ -264,6 +264,8 @@ describe('visão administrativa da fila', () => {
     expect(lista.statusCode).toBe(200);
     expect(Number(lista.headers['x-total-count'])).toBeGreaterThan(0);
     expect(lista.json().length).toBeLessThan(6);
+    // a visão admin mostra quem pediu cada relatório
+    for (const t of lista.json()) expect(typeof t.solicitadoPor).toBe('string');
     expect((await api.req(tokens.auditor, 'GET', '/api/v1/admin/fila/resumo')).statusCode).toBe(403);
   });
 });

@@ -1,6 +1,6 @@
 // Portal Greencode: escolhe a tela conforme a sessão (parceiro, equipe interna ou troca de senha obrigatória).
 // Arthur Oliver Rossi Alves, autor do Greencode.
-import { Avisos, Moldura } from './components/Layout.jsx';
+import { Avisos, Moldura, ProtecaoTela } from './components/Layout.jsx';
 import { obterSessao, useSessao } from './lib/api.js';
 import { useRota } from './lib/hooks.js';
 import { ehSuper, podeAdministrar, podeAuditar } from './lib/papeis.js';
@@ -61,7 +61,7 @@ export default function App() {
     corpo = (
       <Moldura subtitulo={interno ? 'Equipe interna' : 'Portal do parceiro'} itens={itens} rotaAtual={atual.chave} nome={sessao.nome || sessao.usuario} mostrarLimite={!interno}>
         {rota && !itens.some((m) => m.chave === rota) && rota !== 'inicio' ? <Vazio>Esta tela não existe ou o seu acesso não a inclui.</Vazio> : null}
-        <div key={`${atual.chave}/${id}`}>{atual.tela(id)}</div>
+        <div key={`${atual.chave}/${id}`}><ProtecaoTela>{atual.tela(id)}</ProtecaoTela></div>
       </Moldura>
     );
   }
