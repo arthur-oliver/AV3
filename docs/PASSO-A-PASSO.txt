@@ -98,7 +98,8 @@ Os detalhes de cada etapa estão abaixo.
    b) carrega os dados de exemplo (seed).
 
  Resultado esperado (no final):
-   "Seed concluído: 5 usuários, 3 organizações, 5 lotes, 34 equipamentos."
+   "Seed concluído: 5 usuários, 5 organizações (1 inativa), 11 lotes,
+    63 equipamentos."
 
  Confira no MySQL Workbench (clique direito no schema > atualizar):
  devem existir 10 tabelas (+ _prisma_migrations):
@@ -298,7 +299,8 @@ Os detalhes de cada etapa estão abaixo.
      1) Crie uma chave de parceiro. Pelo terminal, na pasta greencode-av3:
             npm run chave:demo
         (imprime a chave uma única vez; com "-- --escrita" inclui a
-        permissão de registrar lotes). Ou, logado como admin, use
+        permissão de registrar lotes; com "-- --org=varejo" a chave é da
+        segunda empresa, Varejo Nova Era). Ou, logado como admin, use
         POST /api/v1/admin/chaves-api no Swagger.
      2) No Swagger, clique em "Authorize", preencha o campo apiKey com a
         chave e teste as rotas "Público - ..." em /api/v1/public.
