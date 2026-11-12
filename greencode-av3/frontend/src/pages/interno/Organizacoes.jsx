@@ -90,7 +90,7 @@ function Organizacao({ id }) {
             <Acoes>
               <Botao onClick={() => setModal('editar')}>Editar dados</Botao>
               <Botao variante="sec" onClick={() => { if (!o.ativo || window.confirm('Inativar a organização? Os lotes e equipamentos dela também ficam inativos (podem ser reativados).')) agir(I(`/organizacoes/${id}/ativo`), 'PATCH', { ativo: !o.ativo, versao: o.versao }, o.ativo ? 'Organização inativada' : 'Organização reativada'); }}>{o.ativo ? 'Inativar' : 'Reativar'}</Botao>
-              <Botao variante="perigo" onClick={() => remover(I(`/organizacoes/${id}?versao=${o.versao}`), 'Excluir DEFINITIVAMENTE a organização, o contrato, os lotes, os equipamentos e as movimentações? Não dá para desfazer.', 'Organização excluída', () => ir('organizacoes'))}>Excluir de vez</Botao>
+              <Botao variante="perigo" onClick={() => remover(I(`/organizacoes/${id}?versao=${o.versao}`), 'Excluir DEFINITIVAMENTE a organização, o contrato, os lotes, os equipamentos e as movimentações? Não dá para desfazer.', 'Organização excluída', () => ir('organizacoes'))}>Excluir</Botao>
             </Acoes>
           )}
           <H2>Contrato</H2>

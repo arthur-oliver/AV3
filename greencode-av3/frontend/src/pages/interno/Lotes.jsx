@@ -124,7 +124,7 @@ function Lote({ id }) {
               {recebido && l.ativo && <Botao variante="sec" onClick={() => setModal('adicionar')}>Adicionar equipamentos</Botao>}
               <Botao variante="sec" onClick={() => setModal('corrigir')}>Corrigir dados</Botao>
               <Botao variante="sec" onClick={() => { if (!l.ativo || window.confirm('Inativar o lote? Os equipamentos dele também ficam inativos e o lote sai dos relatórios.')) agir(I(`/lotes/${id}/ativo`), 'PATCH', { ativo: !l.ativo, versao: l.versao }, l.ativo ? 'Lote inativado' : 'Lote reativado'); }}>{l.ativo ? 'Inativar' : 'Reativar'}</Botao>
-              <Botao variante="perigo" onClick={async () => { if (!window.confirm('Excluir DEFINITIVAMENTE o lote, os equipamentos e as movimentações? Não dá para desfazer.')) return; const r = await seguro(() => chamar(I(`/lotes/${id}?versao=${l.versao}`), { metodo: 'DELETE' })); if (r) { avisar('Lote excluído'); ir('lotes'); } }}>Excluir de vez</Botao>
+              <Botao variante="perigo" onClick={async () => { if (!window.confirm('Excluir DEFINITIVAMENTE o lote, os equipamentos e as movimentações? Não dá para desfazer.')) return; const r = await seguro(() => chamar(I(`/lotes/${id}?versao=${l.versao}`), { metodo: 'DELETE' })); if (r) { avisar('Lote excluído'); ir('lotes'); } }}>Excluir</Botao>
             </Acoes>
           )}
           <H2>Equipamentos</H2>
