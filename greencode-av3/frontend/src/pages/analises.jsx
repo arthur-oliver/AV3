@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { I, P, chamar, seguro } from '../lib/api.js';
+import { I, P, avisar, chamar, seguro } from '../lib/api.js';
 import { useCarregar } from '../lib/hooks.js';
 import { ANALISES, TIPOS, STATUS, rotulo, num, reais, pct, data, qs } from '../lib/rotulos.js';
 import { Acoes, Barra, Botao, Cabeca, Campo, Carregando, H2, H3, Indicadores, LinhaCampos, Painel, Selo, Seletor, Entrada, Suave, Tabela, Vazio } from '../components/ui.jsx';
@@ -142,9 +142,15 @@ export function AnalisesInterno() {
     if (org) corpo.organizacaoId = org;
     if (ini) corpo.inicio = ini;
     if (fim) corpo.fim = fim;
-    const r = await seguro(() => chamar(I(`/analises/${tipo}/executar`), { metodo: 'POST', corpo }));
+    // Calcula a escolhida e atualiza todas as outras; a tela mostra só a escolhida.
+    const r = await seguro(() => chamar(I(`/analises/${tipo}/executar-todas`), { metodo: 'POST', corpo }));
     setCalculando(false);
-    if (r) { setMostrada(r.dados); hist.recarregar(); }
+    if (r) {
+      setMostrada(r.dados.analise);
+      hist.recarregar();
+      const { executadas, falhas } = r.dados;
+      avisar('Análises atualizadas', `${executadas} cálculo(s) concluído(s)${falhas.length ? `, ${falhas.length} falha(s)` : ''}.`, falhas.length ? 'erro' : 'ok');
+    }
   }
   async function abrir(a) {
     const d = await seguro(() => chamar(I(`/analises/historico/${a.id}`)));
@@ -153,7 +159,7 @@ export function AnalisesInterno() {
   const opcoesOrg = Object.fromEntries((orgs.dados || []).map((o) => [o.id, o.razaoSocial]));
   return (
     <div>
-      <Cabeca titulo="Análises" texto="Calcule agora ou consulte o histórico. As análises também rodam sozinhas todos os dias de madrugada." />
+      <Cabeca titulo="Análises" texto="Calcular agora atualiza as três análises de todas as organizações e mostra abaixo a escolhida. Elas também rodam sozinhas todos os dias de madrugada." />
       <Painel>
         <form onSubmit={calcular}>
           <LinhaCampos>

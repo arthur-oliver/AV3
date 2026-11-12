@@ -1,5 +1,5 @@
 // Teste de integração da camada analítica e da fila de processamento assíncrono.
-// Pré-requisitos: banco migrado e populado (npm run setup) e .env configurado.
+// Roda no banco de teste (recriado a cada "npm test", ver tests/setup/bancoDeTeste.ts); basta o .env configurado.
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { construirApp } from '../../src/app';
@@ -12,7 +12,7 @@ import { criarCliente } from '../helpers/api';
 
 const ORG_BANCO = '00000000-0000-4000-8000-0000000000a1';
 const ORG_HOSPITAL = '00000000-0000-4000-8000-0000000000a2';
-const PREFIXO_NOME = 'teste-';
+const PREFIXO_NOME = 'Integração BI';
 const mudo = { info: () => undefined, error: () => undefined };
 
 let app: FastifyInstance;
@@ -105,6 +105,27 @@ describe('camada analítica (internal)', () => {
     expect(inexistente.statusCode).toBe(404);
   });
 
+  it('"Calcular agora" do portal: devolve a escolhida e atualiza as demais em nome de quem pediu', async () => {
+    expect((await interno(tokens.gestor, 'POST', '/analises/EFICIENCIA/executar-todas', {})).statusCode).toBe(403);
+
+    const antes = Number((await interno(tokens.auditor, 'GET', '/analises/historico?limite=1')).headers['x-total-count']);
+    const r = await interno(tokens.auditor, 'POST', '/analises/RENTABILIDADE/executar-todas', { organizacaoId: ORG_HOSPITAL });
+    expect(r.statusCode).toBe(201);
+    const { analise, executadas, falhas } = r.json();
+    expect(falhas).toEqual([]);
+    // só a escolhida volta para a tela
+    expect(analise.tipo).toBe('RENTABILIDADE');
+    expect(analise.organizacaoId).toBe(ORG_HOSPITAL);
+    expect(analise.origem).toBe('MANUAL');
+    // as 3 análises para o global e para cada organização ativa, sem repetir a escolhida
+    expect(executadas).toBeGreaterThanOrEqual(12);
+    const depois = Number((await interno(tokens.auditor, 'GET', '/analises/historico?limite=1')).headers['x-total-count']);
+    expect(depois - antes).toBe(executadas);
+
+    const ultimaVidaUtil = (await interno(tokens.auditor, 'GET', '/analises/historico?tipo=VIDA_UTIL&global=true&limite=1')).json()[0];
+    expect(ultimaVidaUtil.origem).toBe('MANUAL');
+  });
+
   it('o agendador (mesmo trabalho do cron) grava as três análises em todos os escopos', async () => {
     const r = await app.inject({ method: 'POST', url: '/api/v1/admin/analises/executar-agendadas', headers: { authorization: `Bearer ${tokens.admin}` } });
     expect(r.statusCode).toBe(200);
@@ -157,7 +178,7 @@ describe('relatórios assíncronos (internal)', () => {
 describe('relatórios assíncronos pela API pública', () => {
   it('o parceiro pede, acompanha e baixa; outra organização não enxerga a tarefa', async () => {
     const criar = async (organizacaoId: string) =>
-      (await api.req(tokens.admin, 'POST', '/api/v1/admin/chaves-api', { nome: `${PREFIXO_NOME}rel`, organizacaoId, permissoes: ['LER_RELATORIOS'] })).json().chave as string;
+      (await api.req(tokens.admin, 'POST', '/api/v1/admin/chaves-api', { nome: `${PREFIXO_NOME} - relatórios mensais`, organizacaoId, permissoes: ['LER_RELATORIOS'] })).json().chave as string;
     const chaveBanco = await criar(ORG_BANCO);
     const chaveHospital = await criar(ORG_HOSPITAL);
     const pub = (chave: string, metodo: 'GET' | 'POST', url: string, payload?: object) =>

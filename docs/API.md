@@ -204,6 +204,7 @@ Cabeçalhos de limite em toda resposta da API pública: `X-RateLimit-Limit`, `X-
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/analises/{tipo}/executar` | Calcula agora e grava no histórico. Corpo opcional: `{organizacaoId, inicio, fim}`. Padrão: todas as organizações; 90 dias (vida útil: todo o histórico) → 201 |
+| POST | `/analises/{tipo}/executar-todas` | Botão "Calcular agora" do portal: calcula a análise escolhida (mesmo corpo de `/executar`) e depois as 3 análises para todas as organizações juntas e para cada organização ativa, tudo como `MANUAL` em nome de quem pediu. Devolve `{analise, executadas, falhas}` → 201 |
 | GET | `/analises/{tipo}/ultima` | Última análise do tipo (`?organizacaoId=`); calcula na hora se nunca houve |
 | GET | `/analises/historico` | Histórico paginado. Filtros: `tipo`, `organizacaoId`, `global=true` |
 | GET | `/analises/historico/{id}` | Detalha uma análise |

@@ -40,6 +40,28 @@ export async function rotasAnalises(app: FastifyInstance): Promise<void> {
     c.executar as never
   );
 
+  app.post(
+    '/analises/:tipo/executar-todas',
+    {
+      preHandler: leitura,
+      schema: {
+        tags: TAG,
+        summary: 'Calcula a análise escolhida e atualiza todas as outras (o "Calcular agora" do portal)',
+        description:
+          'Calcula a análise do tipo informado (com organização e período opcionais, como em /executar) e, em seguida, ' +
+          'as 3 análises para todas as organizações juntas e para cada organização ativa, com o período padrão. ' +
+          'Tudo fica no histórico com origem MANUAL, em nome de quem pediu. Devolve a análise escolhida e o balanço.',
+        security: seguranca,
+        params: tipoParam,
+        body: {
+          type: 'object',
+          properties: { organizacaoId: uuid, inicio: { type: 'string', maxLength: 30 }, fim: { type: 'string', maxLength: 30 } }
+        }
+      }
+    },
+    c.executarTodas as never
+  );
+
   app.get(
     '/analises/:tipo/ultima',
     {

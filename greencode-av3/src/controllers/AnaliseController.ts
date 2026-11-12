@@ -15,6 +15,12 @@ export class AnaliseController {
     return reply.status(201).send(a);
   };
 
+  // Calcula a escolhida e atualiza todas as demais (3 tipos, global e por organização ativa).
+  executarTodas = async (req: FastifyRequest<ComTipo & { Body: { organizacaoId?: string; inicio?: string; fim?: string } }>, reply: FastifyReply) => {
+    const r = await this.servico.executarTodas(req.params.tipo, { ...req.body, solicitadoPor: req.user.usuario });
+    return reply.status(201).send(r);
+  };
+
   ultima = async (req: FastifyRequest<ComTipo & { Querystring: { organizacaoId?: string } }>) =>
     this.servico.ultimaOuGerar(req.params.tipo, req.query.organizacaoId ?? null, req.user.usuario);
 

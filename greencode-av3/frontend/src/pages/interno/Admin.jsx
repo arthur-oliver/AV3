@@ -79,16 +79,12 @@ export function Fila() {
   const tarefas = useCarregar(() => chamar(A('/fila/tarefas?limite=20')), []);
   const nomes = Object.fromEntries(Object.entries(STATUS_TAREFA).map(([s, t]) => [s, t[0]]));
   const atualizar = () => { resumo.recarregar(); tarefas.recarregar(); };
-  async function agendadas() {
-    const r = await seguro(() => chamar(A('/analises/executar-agendadas'), { metodo: 'POST' }));
-    if (r) avisar('Análises executadas', `${r.dados.executadas} concluída(s), ${r.dados.falhas.length} falha(s).`, r.dados.falhas.length ? 'erro' : 'ok');
-  }
   return (
     <div>
       <Cabeca titulo="Fila de relatórios" texto="Situação dos relatórios pedidos por parceiros e pela equipe." />
       {/* a API devolve { porStatus: { PENDENTE: n, ... } }; status sem tarefas não aparecem, então completamos com zero */}
       {resumo.dados && <Indicadores itens={Object.keys(STATUS_TAREFA).map((k) => [rotulo(nomes, k), (resumo.dados.porStatus || {})[k] || 0])} />}
-      <Acoes className="mb-3"><Botao variante="sec" onClick={atualizar}>Atualizar</Botao><Botao variante="sec" onClick={agendadas}>Rodar análises agendadas agora</Botao></Acoes>
+      <Acoes className="mb-3"><Botao variante="sec" onClick={atualizar}>Atualizar</Botao></Acoes>
       {tarefas.carregando && !tarefas.dados ? <Carregando /> : (
         <Tabela vazio="A fila está vazia." linhas={tarefas.dados} colunas={[
           { titulo: 'Relatório', ver: (t) => `${rotulo(ANALISES, t.tipo)} (${t.formato})` }, { titulo: 'Pedido por', ver: (t) => t.solicitadoPor }, { titulo: 'Pedido em', ver: (t) => data(t.criadoEm) },

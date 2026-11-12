@@ -78,16 +78,21 @@ export class AnaliseServico {
     return apresentar(a);
   }
 
-  // Usada pelo agendador: roda os 3 tipos para o escopo global e para cada organização ativa.
+  // Roda os 3 tipos para o escopo global e para cada organização ativa (período padrão de cada tipo).
   // Uma falha isolada não interrompe as demais; no fim devolve o balanço.
-  async executarTodasAgendadas() {
+  // "pular" evita calcular de novo uma combinação que acabou de ser calculada (ver executarTodas).
+  async executarTodasAgendadas(
+    autor: { origem: OrigemAnalise; solicitadoPor: string } = { origem: OrigemAnalise.AGENDADA, solicitadoPor: 'agendador' },
+    pular?: { tipo: TipoAnalise; organizacaoId: string | null }
+  ) {
     const escopos: (string | null)[] = [null, ...(await this.repo.organizacoesAtivas()).map((o) => o.id)];
     let executadas = 0;
     const falhas: string[] = [];
     for (const organizacaoId of escopos) {
       for (const tipo of Object.values(TipoAnalise)) {
+        if (pular && pular.tipo === tipo && pular.organizacaoId === organizacaoId) continue;
         try {
-          await this.executar(tipo, { organizacaoId, origem: OrigemAnalise.AGENDADA, solicitadoPor: 'agendador' });
+          await this.executar(tipo, { organizacaoId, ...autor });
           executadas += 1;
         } catch (erro) {
           falhas.push(`${tipo}/${organizacaoId ?? 'global'}: ${erro instanceof Error ? erro.message : String(erro)}`);
@@ -95,6 +100,18 @@ export class AnaliseServico {
       }
     }
     return { executadas, falhas };
+  }
+
+  // "Calcular agora" do portal: calcula a análise escolhida (com os filtros informados) e, em seguida,
+  // atualiza as 3 análises de todos os escopos, como o agendador faria. Tudo fica no histórico como MANUAL,
+  // em nome de quem pediu. Devolve a análise escolhida (para exibir) e o balanço do restante.
+  async executarTodas(tipo: TipoAnalise, op: Omit<OpcoesAnalise, 'origem'>) {
+    const autor = { origem: OrigemAnalise.MANUAL, solicitadoPor: op.solicitadoPor };
+    const escolhida = await this.executar(tipo, { ...op, ...autor });
+    // Sem período informado, a escolhida é igual à que o lote calcularia: não repete.
+    const semPeriodo = !op.inicio && !op.fim;
+    const balanco = await this.executarTodasAgendadas(autor, semPeriodo ? { tipo, organizacaoId: op.organizacaoId ?? null } : undefined);
+    return { analise: escolhida, executadas: balanco.executadas + 1, falhas: balanco.falhas };
   }
 }
 
