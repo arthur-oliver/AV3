@@ -98,8 +98,13 @@ Os detalhes de cada etapa estão abaixo.
    b) carrega os dados de exemplo (seed).
 
  Resultado esperado (no final):
-   "Seed concluído: 5 usuários, 5 organizações (1 inativa), 11 lotes,
-    63 equipamentos."
+   "Seed concluído: 5 usuários, 47 organizações (3 inativas), 25 lotes,
+    107 equipamentos."
+
+ Todos os registros têm os campos preenchidos com dados no formato
+ real (CNPJ válido, inscrição estadual, endereço com CEP, telefone,
+ e-mail, contrato, nota fiscal, transportadora e histórico de cada
+ equipamento).
 
  Confira no MySQL Workbench (clique direito no schema > atualizar):
  devem existir 10 tabelas (+ _prisma_migrations):
@@ -131,9 +136,15 @@ Os detalhes de cada etapa estão abaixo.
         ✓ tests/integration/fluxo.test.ts > organizações e contratos > ...
 
  No final aparece o resumo ("Test Files" e "Tests"). Esperado: todos
- passando, sem nenhum ✗ (falha). Um teste marcado com ↓ foi pulado de
- propósito: acontece só quando o banco já tem usuários extras do mesmo
- papel, e isso não é erro.
+ passando, sem nenhum ✗ (falha).
+
+ BANCO PRÓPRIO DOS TESTES: o "npm test" NÃO grava no banco do portal.
+ Antes de rodar, ele cria (se preciso) um segundo banco no mesmo MySQL,
+ com o nome do banco do .env + "_teste" (ex.: greencode_av3_teste),
+ aplica as migrações, apaga o que havia nele e roda o seed. Por isso a
+ primeira execução demora um pouco mais. Nada criado pelos testes
+ aparece no portal. Para usar outro endereço, defina DATABASE_URL_TEST
+ no .env (o nome do banco precisa conter "test").
 
  O comando roda dois grupos (cada um também pode ser rodado sozinho):
 
@@ -147,11 +158,10 @@ Os detalhes de cada etapa estão abaixo.
                               lotes, triagem, rastreabilidade, relatórios,
                               auditoria e as regras de correção/exclusão.
 
- Os testes criam registros novos (nomes e CNPJs aleatórios) e desativam os
- usuários temporários no final. Para voltar ao estado inicial:
+ Para voltar o banco do PORTAL ao estado inicial (por exemplo, depois de
+ cadastrar coisas à mão no portal):
 
-        npm run db:reset            (APAGA tudo e recria as tabelas)
-        npm run db:seed
+        npm run db:reset            (APAGA tudo, recria as tabelas e roda o seed)
 
 ---------------------------------------------------------------------
  6. SUBIR O SERVIDOR
@@ -281,6 +291,10 @@ Os detalhes de cada etapa estão abaixo.
        POST /api/v1/internal/analises/RENTABILIDADE/executar
        POST /api/v1/internal/analises/VIDA_UTIL/executar
      Cada execução fica gravada: veja em GET .../analises/historico.
+     No portal, o botão "Calcular agora" (tela Análises) atualiza as três
+     análises de todas as organizações de uma vez e mostra na tela só a
+     análise e a organização escolhidas nos campos
+     (POST /api/v1/internal/analises/{tipo}/executar-todas).
      As análises também rodam sozinhas todo dia às 03:00 (CRON_ANALISES no
      .env). Para rodar agora o mesmo trabalho do agendador, logado como
      admin: POST /api/v1/admin/analises/executar-agendadas

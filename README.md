@@ -119,7 +119,11 @@ Esse comando compila o portal (`build:web`), sobe a API (`dev`) e o portal em de
 
 Essas contas de demonstração entram sem troca de senha. Usuários novos, criados pelo superusuário no portal, precisam trocar a senha provisória no primeiro acesso.
 
-**Empresa parceira** (aba "Sou parceiro"): o parceiro entra com uma chave de API. Para gerar uma chave de teste, rode um dos comandos abaixo no terminal, dentro de `greencode-av3`. As duas opções criam a chave para a organização de demonstração (Banco Horizonte), com limite de 60 requisições por minuto. A diferença está só nas permissões.
+**Empresa parceira** (aba "Sou parceiro"): o parceiro entra com uma chave de API. A chave pode ser gerada de duas formas: no portal, pelo **superusuário** ou por um **administrador**, ou no terminal, pelo script de demonstração.
+
+**Pelo portal (superusuário ou administrador):** entre na aba "Equipe interna" como `superusuario` (ou `admin`), abra **Chaves de API**, dê um nome à chave, escolha a organização parceira, marque as permissões, ajuste o limite de requisições por minuto e clique em **Criar chave**. A chave aparece uma única vez na tela: copie e entregue ao parceiro. Na mesma tela dá para revogar, reativar ou trocar a chave. Assim é possível gerar chave para qualquer uma das organizações cadastradas.
+
+**Pelo terminal:** rode um dos comandos abaixo, dentro de `greencode-av3`. As duas primeiras opções criam a chave para a organização de demonstração (Banco Horizonte), com limite de 60 requisições por minuto. A diferença está só nas permissões.
 
 **Chave só de consulta** (permissões `LER_RASTREABILIDADE` e `LER_RELATORIOS`): o parceiro vê Início, Lotes, Rastrear equipamento, Análises e Pedidos de relatório, sem poder alterar nada.
 
@@ -145,21 +149,11 @@ npm run chave:demo -- --org=varejo --escrita
 
 A opção `--org` também aceita `hospital` e `universidade`.
 
-O terminal mostra a chave (começa com `gck_`) uma única vez: copie e cole no portal. Cada execução cria uma chave nova, e as anteriores continuam valendo. Chaves para qualquer organização também podem ser criadas no portal, em **Chaves de API**, por um administrador ou pelo superusuário.
+O terminal mostra a chave (começa com `gck_`) uma única vez: copie e cole no portal. Cada execução cria uma chave nova, e as anteriores continuam valendo.
 
 ### Dados de exemplo
 
 O `npm run setup` (ou só `npm run db:seed`) carrega uma massa de dados para todas as telas terem o que mostrar. Pode rodar mais de uma vez: o seed só acrescenta o que ainda não existe.
-
-| Organização | Situação | Lotes |
-|---|---|---|
-| Banco Horizonte S.A. | Ativa, com contrato | 3 lotes (recebido, triagem concluída e massa para análises) |
-| Hospital Vida Plena | Ativa, com contrato | 3 lotes (recebido, em triagem e massa para análises) |
-| Universidade Federal Exemplo | Ativa, sem contrato | 1 lote com a triagem concluída |
-| Varejo Nova Era Comércio Ltda | Ativa, com contrato (segunda empresa parceira) | 3 lotes: finalizado, em andamento com destinos variados e recém-chegado |
-| Construtora Alicerce Ltda | Inativa, com contrato vencido | 1 lote finalizado e desativado |
-
-São 63 equipamentos no total, com o histórico de movimentações de cada um. A tela de Auditoria já traz os registros de criação das organizações e dos lotes, e também a desativação da construtora e do lote dela.
 
 ## Documentação
 
