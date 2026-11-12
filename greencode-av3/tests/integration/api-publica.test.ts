@@ -1,28 +1,30 @@
 // Teste de integração da API pública (v1): chaves, permissões, isolamento entre organizações, limite por chave
-// e versionamento. Pré-requisitos: banco migrado e populado (npm run setup) e .env configurado.
+// e versionamento. Roda no banco de teste (recriado a cada "npm test", ver tests/setup/bancoDeTeste.ts); basta o .env configurado.
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { construirApp } from '../../src/app';
 import { prisma } from '../../src/lib/prisma';
 import { criarCliente } from '../helpers/api';
+import { novaNotaFiscal, transportadora } from '../helpers/dados';
 
 const ORG_BANCO = '00000000-0000-4000-8000-0000000000a1';
 const ORG_HOSPITAL = '00000000-0000-4000-8000-0000000000a2';
 const LOTE_HOSPITAL = '00000000-0000-4000-8000-0000000000b2';
 const EQUIP_BANCO = '00000000-0000-4000-8000-0000000000c3'; // lote do banco
 const EQUIP_HOSPITAL = '00000000-0000-4000-8000-0000000000c5'; // lote do hospital
-const PREFIXO_NOME = 'teste-';
+const PREFIXO_NOME = 'Integração ERP';
 
 let app: FastifyInstance;
 let api: ReturnType<typeof criarCliente>;
 const tokens: Record<string, string> = {};
+let chaves = 0;
 
 const pub = (chave: string | undefined, metodo: 'GET' | 'POST', url: string, payload?: object) =>
   app.inject({ method: metodo, url: `/api/v1/public${url}`, payload, headers: chave ? { 'x-api-key': chave } : {} });
 
 async function criarChave(permissoes: string[], extra: Record<string, unknown> = {}, organizacaoId = ORG_BANCO) {
   const r = await api.req(tokens.admin, 'POST', '/api/v1/admin/chaves-api', {
-    nome: `${PREFIXO_NOME}${Math.random().toString(36).slice(2, 8)}`,
+    nome: `${PREFIXO_NOME} - filial ${++chaves}`,
     organizacaoId,
     permissoes,
     ...extra
@@ -47,7 +49,7 @@ afterAll(async () => {
 
 describe('gestão das chaves (admin)', () => {
   it('só administrador e superusuário gerenciam chaves', async () => {
-    const dados = { nome: `${PREFIXO_NOME}x`, organizacaoId: ORG_BANCO, permissoes: ['LER_RASTREABILIDADE'] };
+    const dados = { nome: `${PREFIXO_NOME} - matriz`, organizacaoId: ORG_BANCO, permissoes: ['LER_RASTREABILIDADE'] };
     expect((await api.req(tokens.gestor, 'POST', '/api/v1/admin/chaves-api', dados)).statusCode).toBe(403);
     expect((await api.req(tokens.auditor, 'GET', '/api/v1/admin/chaves-api')).statusCode).toBe(403);
   });
@@ -65,7 +67,7 @@ describe('gestão das chaves (admin)', () => {
   });
 
   it('valida os dados: permissão vazia ou desconhecida, organização inexistente', async () => {
-    const base = { nome: `${PREFIXO_NOME}v`, organizacaoId: ORG_BANCO };
+    const base = { nome: `${PREFIXO_NOME} - portal de compras`, organizacaoId: ORG_BANCO };
     expect((await api.req(tokens.admin, 'POST', '/api/v1/admin/chaves-api', { ...base, permissoes: [] })).statusCode).toBe(400);
     expect((await api.req(tokens.admin, 'POST', '/api/v1/admin/chaves-api', { ...base, permissoes: ['VOAR'] })).statusCode).toBe(400);
     const semOrg = await api.req(tokens.admin, 'POST', '/api/v1/admin/chaves-api', { ...base, organizacaoId: '00000000-0000-4000-8000-00000000ffff', permissoes: ['LER_RELATORIOS'] });
@@ -142,7 +144,7 @@ describe('limite de requisições por chave', () => {
 describe('permissões e isolamento entre organizações', () => {
   it('a chave só faz o que suas permissões permitem (403 SEM_PERMISSAO)', async () => {
     const { chave } = await criarChave(['LER_RASTREABILIDADE']);
-    const escrever = await pub(chave, 'POST', '/lotes', { notaFiscal: 'NF-X', transportadora: 'T' });
+    const escrever = await pub(chave, 'POST', '/lotes', { notaFiscal: novaNotaFiscal(), transportadora: transportadora() });
     expect(escrever.statusCode).toBe(403);
     expect(escrever.json().erro).toBe('SEM_PERMISSAO');
     expect((await pub(chave, 'POST', '/relatorios', { tipo: 'EFICIENCIA' })).statusCode).toBe(403);
@@ -169,8 +171,8 @@ describe('permissões e isolamento entre organizações', () => {
     const { chave } = await criarChave(['LER_RASTREABILIDADE', 'ESCREVER_LOTES']);
     const r = await pub(chave, 'POST', '/lotes', {
       organizacaoId: ORG_HOSPITAL,
-      notaFiscal: `NF-API-${Date.now()}`,
-      transportadora: 'TransApi',
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
       equipamentos: [{ tipo: 'NOTEBOOK', marca: 'Dell', anoFabricacao: 2019, estadoFisico: 'USADO_LEVE', pesoQuilogramas: 1.8 }]
     });
     expect(r.statusCode).toBe(201);
@@ -181,7 +183,7 @@ describe('permissões e isolamento entre organizações', () => {
 
   it('valida o corpo (400 VALIDACAO)', async () => {
     const { chave } = await criarChave(['ESCREVER_LOTES']);
-    const r = await pub(chave, 'POST', '/lotes', { transportadora: 'T' });
+    const r = await pub(chave, 'POST', '/lotes', { transportadora: transportadora() } /* sem nota fiscal: recusado */);
     expect(r.statusCode).toBe(400);
     expect(r.json().erro).toBe('VALIDACAO');
   });

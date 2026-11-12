@@ -1,9 +1,9 @@
 // Teste de integração: sobe a API de verdade (app.inject) contra o MySQL.
-// Pré-requisitos: banco migrado e populado (npm run db:migrate && npm run db:seed) e .env configurado.
+// Roda no banco de teste (recriado a cada "npm test", ver tests/setup/bancoDeTeste.ts), com dados realistas.
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { construirApp } from '../../src/app';
-import { gerarCnpjValido } from '../helpers/cnpj';
+import { contratoVigente, novaEmpresa, novaNotaFiscal, transportadora } from '../helpers/dados';
 
 let app: FastifyInstance;
 const tokens: Record<string, string> = {};
@@ -56,7 +56,7 @@ describe('autenticação e autorização', () => {
   });
 
   it('respeita as permissões por papel', async () => {
-    const dados = { razaoSocial: 'Teste Permissão', cnpj: gerarCnpjValido() };
+    const dados = novaEmpresa();
     expect((await req(tokens.auditor, 'POST', '/api/v1/internal/organizacoes', dados)).statusCode).toBe(403);
     expect((await req(tokens.gestor, 'POST', '/api/v1/internal/organizacoes', dados)).statusCode).toBe(403);
     expect((await req(tokens.auditor, 'GET', '/api/v1/admin/usuarios')).statusCode).toBe(403);
@@ -65,13 +65,13 @@ describe('autenticação e autorização', () => {
 });
 
 describe('organizações e contratos', () => {
-  const cnpj = gerarCnpjValido();
+  const empresa = novaEmpresa();
+  const { cnpj } = empresa;
 
   it('cadastra organização com contrato', async () => {
     const r = await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', {
-      razaoSocial: 'Empresa de Teste Ltda',
-      cnpj,
-      contrato: { dataVencimento: '2099-12-31', clausulas: ['Coleta mensal'], valorMensal: 1234.5 }
+      ...empresa,
+      contrato: contratoVigente(1234.5)
     });
     expect(r.statusCode).toBe(201);
     const corpo = r.json();
@@ -82,15 +82,15 @@ describe('organizações e contratos', () => {
   });
 
   it('recusa CNPJ duplicado (409) e CNPJ inválido (400)', async () => {
-    expect((await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', { razaoSocial: 'Duplicada', cnpj })).statusCode).toBe(409);
-    expect((await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', { razaoSocial: 'Falsa', cnpj: '11111111111111' })).statusCode).toBe(400);
+    expect((await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', { ...novaEmpresa(), cnpj })).statusCode).toBe(409);
+    expect((await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', { ...novaEmpresa(), cnpj: '11111111111111' })).statusCode).toBe(400);
   });
 
   it('versionamento otimista: a segunda atualização com a mesma versão dá 409', async () => {
-    const ok = await req(tokens.operador, 'PUT', `/api/v1/internal/organizacoes/${orgId}`, { telefone: '(11) 99999-0000', versao: 1 });
+    const ok = await req(tokens.operador, 'PUT', `/api/v1/internal/organizacoes/${orgId}`, { telefone: '(19) 3232-4199', versao: 1 });
     expect(ok.statusCode).toBe(200);
     expect(ok.json().versao).toBe(2);
-    const conflito = await req(tokens.operador, 'PUT', `/api/v1/internal/organizacoes/${orgId}`, { telefone: '(11) 88888-0000', versao: 1 });
+    const conflito = await req(tokens.operador, 'PUT', `/api/v1/internal/organizacoes/${orgId}`, { telefone: '(19) 3232-4200', versao: 1 });
     expect(conflito.statusCode).toBe(409);
   });
 });
@@ -99,8 +99,8 @@ describe('lotes e equipamentos', () => {
   it('cria lote com equipamentos em uma transação', async () => {
     const r = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', {
       organizacaoId: orgId,
-      notaFiscal: 'NF-TESTE-1',
-      transportadora: 'TransTeste',
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
       equipamentos: [
         { tipo: 'NOTEBOOK', anoFabricacao: 2020, estadoFisico: 'NOVO', pesoQuilogramas: 1.5 },
         { tipo: 'MONITOR', anoFabricacao: 2019, pesoQuilogramas: 3 }
@@ -118,25 +118,24 @@ describe('lotes e equipamentos', () => {
   });
 
   it('valida a data de entrada do lote', async () => {
-    const base = { organizacaoId: orgId, notaFiscal: 'NF-X', transportadora: 'T' };
+    const base = { organizacaoId: orgId, notaFiscal: novaNotaFiscal(), transportadora: transportadora() };
     expect((await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { ...base, dataEntrada: '2099-01-01' })).statusCode).toBe(400);
     expect((await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { ...base, dataEntrada: '2020-01-01' })).statusCode).toBe(400);
   });
 
   it('só recebe lote organização com contrato ativo (422 sem contrato ou com contrato vencido)', async () => {
-    const semContrato = await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', { razaoSocial: 'Sem contrato', cnpj: gerarCnpjValido() });
+    const semContrato = await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', novaEmpresa());
     expect(semContrato.statusCode).toBe(201);
-    const r = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: semContrato.json().id, notaFiscal: 'NF-SC', transportadora: 'T' });
+    const r = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: semContrato.json().id, notaFiscal: novaNotaFiscal(), transportadora: transportadora() });
     expect(r.statusCode).toBe(422);
     expect(r.json().mensagem).toContain('contrato');
 
     const vencido = await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', {
-      razaoSocial: 'Contrato vencido',
-      cnpj: gerarCnpjValido(),
-      contrato: { dataAssinatura: '2020-01-01', dataVencimento: '2020-12-31', clausulas: ['Teste'], valorMensal: 1 }
+      ...novaEmpresa(),
+      contrato: { ...contratoVigente(2800), dataAssinatura: '2020-01-01', dataVencimento: '2020-12-31' }
     });
     expect(vencido.statusCode).toBe(201);
-    const r2 = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: vencido.json().id, notaFiscal: 'NF-V', transportadora: 'T' });
+    const r2 = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: vencido.json().id, notaFiscal: novaNotaFiscal(), transportadora: transportadora() });
     expect(r2.statusCode).toBe(422);
   });
 
@@ -222,7 +221,7 @@ describe('relatórios e auditoria', () => {
   });
 
   it('o auditor não consegue alterar nada', async () => {
-    const r = await req(tokens.auditor, 'POST', '/api/v1/internal/lotes', { organizacaoId: orgId, notaFiscal: 'NF', transportadora: 'T' });
+    const r = await req(tokens.auditor, 'POST', '/api/v1/internal/lotes', { organizacaoId: orgId, notaFiscal: novaNotaFiscal(), transportadora: transportadora() });
     expect(r.statusCode).toBe(403);
   });
 });

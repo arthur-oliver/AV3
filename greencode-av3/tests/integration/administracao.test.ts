@@ -1,13 +1,11 @@
 // Testes de integração das regras de administração: edição, exclusão e proteção do sistema.
-// Mesmo pré-requisito do fluxo.test.ts: banco migrado e populado (npm run setup) e .env configurado.
-//
-// Os testes criam usuários, organizações e lotes temporários (nomes com sufixo único) e, ao terminar,
-// desativam os usuários temporários. Nenhum dado do seed é alterado de forma permanente.
+// Roda no banco de teste (recriado a cada "npm test", ver tests/setup/bancoDeTeste.ts); basta o .env configurado.
+// Cria usuários, organizações e lotes com dados realistas (tests/helpers/dados.ts). O banco do portal não é tocado.
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { construirApp } from '../../src/app';
-import { gerarCnpjValido } from '../helpers/cnpj';
 import { criarCliente } from '../helpers/api';
+import { contratoVigente, novaEmpresa, novaNotaFiscal, novaPessoa, transportadora } from '../helpers/dados';
 import { prisma } from '../../src/lib/prisma';
 
 let app: FastifyInstance;
@@ -15,12 +13,13 @@ const api = criarCliente(() => app);
 const { req } = api;
 const tokens: Record<string, string> = {};
 
-const SUFIXO = Date.now().toString(36);
 const SENHA = 'Senha@12345';
+const NF_CORRIGIDA = 'NF-104590';
 const usuariosTemporarios: string[] = []; // ids, para desativar no final
 
-async function criarUsuario(papel: string, apelido: string) {
-  const r = await req(tokens.super, 'POST', '/api/v1/admin/usuarios', { usuario: `t_${apelido}_${SUFIXO}`, senha: SENHA, papel });
+// O segundo parâmetro só descreve o caso de teste (não vira nome de nada).
+async function criarUsuario(papel: string, _caso?: string) {
+  const r = await req(tokens.super, 'POST', '/api/v1/admin/usuarios', { ...novaPessoa(), senha: SENHA, papel });
   expect(r.statusCode).toBe(201);
   const u = r.json() as { id: string; usuario: string; versao: number; papel: string };
   usuariosTemporarios.push(u.id);
@@ -31,13 +30,9 @@ async function criarUsuario(papel: string, apelido: string) {
 // outras rotas, o fluxo de troca é pulado direto no banco; o fluxo real é testado em "troca obrigatória de senha".
 const liberarTroca = (id: string) => prisma.usuario.update({ where: { id }, data: { trocaSenhaObrigatoria: false } });
 
-// Organização de teste com contrato ativo (nome com sufixo único).
-const criarOrganizacao = (rotulo: string, token = tokens.operador) =>
-  req(token, 'POST', '/api/v1/internal/organizacoes', {
-    razaoSocial: `${rotulo} ${SUFIXO}`,
-    cnpj: gerarCnpjValido(),
-    contrato: { dataVencimento: '2099-12-31', clausulas: ['Teste'], valorMensal: 10 }
-  });
+// Organização com todos os campos e contrato vigente. O primeiro parâmetro só descreve o caso de teste.
+const criarOrganizacao = (_caso: string, token = tokens.operador) =>
+  req(token, 'POST', '/api/v1/internal/organizacoes', { ...novaEmpresa(), contrato: contratoVigente() });
 
 const buscarUsuario = async (id: string) => (await req(tokens.super, 'GET', `/api/v1/admin/usuarios/${id}`)).json();
 const buscarLote = async (id: string) => (await req(tokens.gestor, 'GET', `/api/v1/internal/lotes/${id}`)).json();
@@ -232,7 +227,7 @@ describe('usuários: gestão de contas', () => {
     for (const quem of ['admin', 'operador', 'gestor', 'auditor']) {
       expect((await req(tokens[quem], 'GET', '/api/v1/admin/usuarios')).statusCode).toBe(403);
       expect((await req(tokens[quem], 'GET', `/api/v1/admin/usuarios/${u.id}`)).statusCode).toBe(403);
-      expect((await req(tokens[quem], 'PATCH', `/api/v1/admin/usuarios/${u.id}/nome`, { nome: 'Fulano', versao: 1 })).statusCode).toBe(403);
+      expect((await req(tokens[quem], 'PATCH', `/api/v1/admin/usuarios/${u.id}/nome`, { nome: 'Carlos Eduardo Pinto', versao: 1 })).statusCode).toBe(403);
       expect((await req(tokens[quem], 'PUT', `/api/v1/admin/usuarios/${u.id}`, { papel: 'GESTOR_ALMOXARIFADO', versao: 1 })).statusCode).toBe(403);
       expect((await req(tokens[quem], 'POST', `/api/v1/admin/usuarios/${u.id}/redefinir-senha`, { novaSenha: 'Qualquer@123' })).statusCode).toBe(403);
       expect((await req(tokens[quem], 'DELETE', `/api/v1/admin/usuarios/${u.id}`)).statusCode).toBe(403);
@@ -250,7 +245,7 @@ describe('superusuário: único responsável pelas contas', () => {
   });
 
   it('ninguém cria nem atribui o papel SUPERUSUARIO pela API', async () => {
-    const criar = await req(tokens.super, 'POST', '/api/v1/admin/usuarios', { usuario: `t_dup_${SUFIXO}`, senha: SENHA, papel: 'SUPERUSUARIO' });
+    const criar = await req(tokens.super, 'POST', '/api/v1/admin/usuarios', { ...novaPessoa(), senha: SENHA, papel: 'SUPERUSUARIO' });
     expect(criar.statusCode).toBe(400);
     const u = await criarUsuario('AUDITOR', 'promocao');
     const promover = await req(tokens.super, 'PUT', `/api/v1/admin/usuarios/${u.id}`, { papel: 'SUPERUSUARIO', versao: u.versao });
@@ -268,8 +263,8 @@ describe('superusuário: único responsável pelas contas', () => {
     expect(org.statusCode).toBe(201);
     const lote = await req(tokens.super, 'POST', '/api/v1/internal/lotes', {
       organizacaoId: org.json().id,
-      notaFiscal: 'NF-SUPER',
-      transportadora: 'T',
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
       equipamentos: [{ tipo: 'NOTEBOOK', anoFabricacao: 2020, pesoQuilogramas: 2 }]
     });
     expect(lote.statusCode).toBe(201);
@@ -289,7 +284,7 @@ describe('superusuário: único responsável pelas contas', () => {
     expect(ok.json().versao).toBe(u.versao + 1);
 
     // versão antiga -> conflito
-    const velho = await req(tokens.super, 'PATCH', `/api/v1/admin/usuarios/${u.id}/nome`, { nome: 'Outro Nome', versao: u.versao });
+    const velho = await req(tokens.super, 'PATCH', `/api/v1/admin/usuarios/${u.id}/nome`, { nome: 'Mariana Silva Costa', versao: u.versao });
     expect(velho.statusCode).toBe(409);
 
     // o próprio usuário altera o seu nome, usando a versão de /auth/me
@@ -327,7 +322,7 @@ describe('troca obrigatória de senha no primeiro acesso', () => {
     const lotes = await req(token, 'GET', '/api/v1/internal/lotes');
     expect(lotes.statusCode).toBe(403);
     expect(lotes.json().erro).toBe('TROCA_SENHA_OBRIGATORIA');
-    expect((await req(token, 'PUT', '/api/v1/internal/auth/perfil', { nome: 'Fulano', versao: 1 })).json().erro).toBe('TROCA_SENHA_OBRIGATORIA');
+    expect((await req(token, 'PUT', '/api/v1/internal/auth/perfil', { nome: 'Carlos Eduardo Pinto', versao: 1 })).json().erro).toBe('TROCA_SENHA_OBRIGATORIA');
 
     // /auth/me continua liberada e informa a pendência
     const eu = await req(token, 'GET', '/api/v1/internal/auth/me');
@@ -403,17 +398,16 @@ describe('lotes e equipamentos: correção e exclusão', () => {
 
   beforeAll(async () => {
     const org = await req(tokens.operador, 'POST', '/api/v1/internal/organizacoes', {
-      razaoSocial: `Edição ${SUFIXO} Ltda`,
-      cnpj: gerarCnpjValido(),
-      contrato: { dataVencimento: '2099-12-31', clausulas: ['Coleta mensal'], valorMensal: 500 }
+      ...novaEmpresa(),
+      contrato: contratoVigente(500)
     });
     expect(org.statusCode).toBe(201);
     orgId = org.json().id;
 
     const lote = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', {
       organizacaoId: orgId,
-      notaFiscal: 'NF-ED-1',
-      transportadora: 'Transp A',
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
       equipamentos: [
         { tipo: 'NOTEBOOK', marca: 'Dell', anoFabricacao: 2020, pesoQuilogramas: 2 },
         { tipo: 'MONITOR', marca: 'LG', anoFabricacao: 2019, pesoQuilogramas: 3 },
@@ -428,17 +422,17 @@ describe('lotes e equipamentos: correção e exclusão', () => {
   it('corrige nota fiscal, transportadora e observações do lote', async () => {
     const antes = await buscarLote(loteId);
     const r = await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${loteId}`, {
-      notaFiscal: 'NF-ED-CORRIGIDA',
-      transportadora: 'Transp B',
-      observacoes: 'Corrigido após conferência',
+      notaFiscal: NF_CORRIGIDA,
+      transportadora: 'Expresso Nordeste',
+      observacoes: 'Nota fiscal corrigida após conferência com o cliente.',
       versao: antes.versao
     });
     expect(r.statusCode).toBe(200);
-    expect(r.json().notaFiscal).toBe('NF-ED-CORRIGIDA');
+    expect(r.json().notaFiscal).toBe(NF_CORRIGIDA);
     expect(r.json().versao).toBe(antes.versao + 1);
 
     // versão antiga: conflito
-    const conflito = await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${loteId}`, { notaFiscal: 'X', versao: antes.versao });
+    const conflito = await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${loteId}`, { notaFiscal: 'NF-104577', versao: antes.versao });
     expect(conflito.statusCode).toBe(409);
   });
 
@@ -455,7 +449,7 @@ describe('lotes e equipamentos: correção e exclusão', () => {
 
   it('corrige os dados cadastrais de um equipamento', async () => {
     const antes = await buscarEquipamento(eqIds[0]);
-    const r = await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { marca: 'Lenovo', modelo: 'T480', pesoQuilogramas: 1.75, versao: antes.versao });
+    const r = await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { marca: 'Lenovo', modelo: 'ThinkPad T480', pesoQuilogramas: 1.75, versao: antes.versao });
     expect(r.statusCode).toBe(200);
     expect(r.json().marca).toBe('Lenovo');
     expect(Number(r.json().pesoQuilogramas)).toBe(1.75);
@@ -463,7 +457,7 @@ describe('lotes e equipamentos: correção e exclusão', () => {
     expect(r.json().versao).toBe(antes.versao + 1);
 
     // versão desatualizada, campo vazio, ano absurdo e peso inválido
-    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { marca: 'Outra', versao: antes.versao })).statusCode).toBe(409);
+    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { marca: 'Acer', versao: antes.versao })).statusCode).toBe(409);
     const atual = await buscarEquipamento(eqIds[0]);
     expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { versao: atual.versao })).statusCode).toBe(400);
     expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { anoFabricacao: 2099, versao: atual.versao })).statusCode).toBe(400);
@@ -498,8 +492,8 @@ describe('lotes e equipamentos: correção e exclusão', () => {
   it('exclui um lote inteiro (com equipamentos) antes da triagem', async () => {
     const lote = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', {
       organizacaoId: orgId,
-      notaFiscal: 'NF-DESCARTE',
-      transportadora: 'Transp C',
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
       equipamentos: [{ tipo: 'ROTEADOR', anoFabricacao: 2021, pesoQuilogramas: 1 }]
     });
     const { id, versao } = lote.json() as { id: string; versao: number };
@@ -521,16 +515,16 @@ describe('lotes e equipamentos: correção e exclusão', () => {
     const lote = await buscarLote(loteId);
     const hoje = new Date().toISOString().slice(0, 10);
     expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${loteId}`, { dataEntrada: hoje, versao: lote.versao })).statusCode).toBe(422);
-    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${loteId}`, { observacoes: 'Ajuste pós-triagem', versao: lote.versao })).statusCode).toBe(200);
+    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${loteId}`, { observacoes: 'Peso dos equipamentos revisado após a triagem.', versao: lote.versao })).statusCode).toBe(200);
   });
 
   it('respeita as permissões por papel', async () => {
     const lote = await buscarLote(loteId);
     const eq = await buscarEquipamento(eqIds[0]);
     for (const quem of ['auditor', 'operador']) {
-      expect((await req(tokens[quem], 'PUT', `/api/v1/internal/lotes/${loteId}`, { notaFiscal: 'X', versao: lote.versao })).statusCode).toBe(403);
+      expect((await req(tokens[quem], 'PUT', `/api/v1/internal/lotes/${loteId}`, { notaFiscal: 'NF-104577', versao: lote.versao })).statusCode).toBe(403);
       expect((await req(tokens[quem], 'DELETE', `/api/v1/internal/lotes/${loteId}?versao=${lote.versao}`)).statusCode).toBe(403);
-      expect((await req(tokens[quem], 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { marca: 'X', versao: eq.versao })).statusCode).toBe(403);
+      expect((await req(tokens[quem], 'PUT', `/api/v1/internal/equipamentos/${eqIds[0]}`, { marca: 'Positivo', versao: eq.versao })).statusCode).toBe(403);
       expect((await req(tokens[quem], 'DELETE', `/api/v1/internal/equipamentos/${eqIds[0]}?versao=${eq.versao}`)).statusCode).toBe(403);
     }
   });
@@ -540,7 +534,7 @@ describe('lotes e equipamentos: correção e exclusão', () => {
     const contrato = await req(tokens.operador, 'DELETE', `/api/v1/internal/organizacoes/${orgId}/contrato?versao=${org.contrato.versao}`);
     expect(contrato.statusCode).toBe(200);
 
-    const novo = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: orgId, notaFiscal: 'NF-SEM', transportadora: 'T' });
+    const novo = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: orgId, notaFiscal: novaNotaFiscal(), transportadora: transportadora() });
     expect(novo.statusCode).toBe(422);
     expect((await buscarLote(loteId)).id).toBe(loteId); // o lote que já existia continua lá
   });
@@ -589,11 +583,11 @@ describe('soft delete e exclusão em cadeia', () => {
     expect(org.statusCode).toBe(201);
     const orgId = org.json().id as string;
     const lotes: { id: string; eqIds: string[] }[] = [];
-    for (const nf of ['A', 'B']) {
+    for (let n = 0; n < 2; n++) {
       const l = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', {
         organizacaoId: orgId,
-        notaFiscal: `NF-${rotulo}-${nf}`,
-        transportadora: 'T',
+        notaFiscal: novaNotaFiscal(),
+        transportadora: transportadora(),
         equipamentos: [
           { tipo: 'NOTEBOOK', anoFabricacao: 2020, pesoQuilogramas: 2 },
           { tipo: 'MONITOR', anoFabricacao: 2019, pesoQuilogramas: 3 }
@@ -627,16 +621,16 @@ describe('soft delete e exclusão em cadeia', () => {
 
     // lote e equipamentos inativos não aceitam alteração (422)
     const inativo = await buscarLote(lote.id);
-    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${lote.id}`, { notaFiscal: 'X', versao: inativo.versao })).statusCode).toBe(422);
+    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${lote.id}`, { notaFiscal: 'NF-104577', versao: inativo.versao })).statusCode).toBe(422);
     expect((await req(tokens.gestor, 'POST', `/api/v1/internal/lotes/${lote.id}/triagem`, { versao: inativo.versao })).statusCode).toBe(422);
     const eq = await buscarEquipamento(lotes[0].eqIds[0]);
-    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eq.id}`, { marca: 'X', versao: eq.versao })).statusCode).toBe(422);
+    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eq.id}`, { marca: 'Positivo', versao: eq.versao })).statusCode).toBe(422);
 
     // reativa e volta a aceitar alterações
     const on = await req(tokens.gestor, 'PATCH', `/api/v1/internal/lotes/${lote.id}/ativo`, { ativo: true, versao: inativo.versao });
     expect(on.statusCode).toBe(200);
     expect(on.json().ativo).toBe(true);
-    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${lote.id}`, { notaFiscal: 'NF-OK', versao: on.json().versao })).statusCode).toBe(200);
+    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/lotes/${lote.id}`, { notaFiscal: 'NF-104578', versao: on.json().versao })).statusCode).toBe(200);
 
     const journal = (await req(tokens.auditor, 'GET', `/api/v1/internal/auditoria?entidade=Lote&entidadeId=${lote.id}`)).json().registros as { operacao: string }[];
     expect(journal.filter((j) => j.operacao === 'ATUALIZAR').length).toBeGreaterThanOrEqual(2);
@@ -680,9 +674,9 @@ describe('soft delete e exclusão em cadeia', () => {
       expect(lote.equipamentos).toHaveLength(2); // nada foi apagado
     }
     const eq = await buscarEquipamento(lotes[0].eqIds[0]);
-    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eq.id}`, { marca: 'X', versao: eq.versao })).statusCode).toBe(422);
+    expect((await req(tokens.gestor, 'PUT', `/api/v1/internal/equipamentos/${eq.id}`, { marca: 'Positivo', versao: eq.versao })).statusCode).toBe(422);
     // organização inativa não recebe lote
-    expect((await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: orgId, notaFiscal: 'NF-N', transportadora: 'T' })).statusCode).toBe(422);
+    expect((await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', { organizacaoId: orgId, notaFiscal: novaNotaFiscal(), transportadora: transportadora() })).statusCode).toBe(422);
 
     // reativar a organização não reativa os lotes; e um lote só volta com a organização ativa
     const lote = await buscarLote(lotes[0].id);
@@ -725,8 +719,8 @@ describe('status do lote derivado dos equipamentos', () => {
     const org = await criarOrganizacao(rotulo);
     const l = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', {
       organizacaoId: org.json().id,
-      notaFiscal: `NF-${rotulo}`,
-      transportadora: 'T',
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
       equipamentos: [
         { tipo: 'NOTEBOOK', anoFabricacao: 2020, pesoQuilogramas: 2 },
         { tipo: 'MONITOR', anoFabricacao: 2019, pesoQuilogramas: 3 }
@@ -801,8 +795,8 @@ describe('paginação, relatórios e código de barras', () => {
     const orgId = org.json().id as string;
     const l = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', {
       organizacaoId: orgId,
-      notaFiscal: 'NF-REL',
-      transportadora: 'T',
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
       equipamentos: [{ tipo: 'NOTEBOOK', anoFabricacao: 2020, pesoQuilogramas: 2 }]
     });
     const lote = l.json() as { id: string; versao: number };
@@ -826,14 +820,14 @@ describe('paginação, relatórios e código de barras', () => {
     const org = await criarOrganizacao('Barras', tokens.operador);
     const l = await req(tokens.gestor, 'POST', '/api/v1/internal/lotes', {
       organizacaoId: org.json().id,
-      notaFiscal: 'NF-BAR',
-      transportadora: 'T',
-      equipamentos: [{ codigoBarrasInterno: 'MEU-CODIGO', tipo: 'NOTEBOOK', anoFabricacao: 2020, pesoQuilogramas: 2 }]
+      notaFiscal: novaNotaFiscal(),
+      transportadora: transportadora(),
+      equipamentos: [{ codigoBarrasInterno: 'ETQ-2026-000431', tipo: 'NOTEBOOK', anoFabricacao: 2020, pesoQuilogramas: 2 }]
     });
     expect(l.statusCode).toBe(201);
     const e = l.json().equipamentos[0] as { id: string; codigoBarrasInterno: string };
     expect(e.codigoBarrasInterno).toBe(e.id);
-    expect(e.codigoBarrasInterno).not.toBe('MEU-CODIGO');
+    expect(e.codigoBarrasInterno).not.toBe('ETQ-2026-000431');
   });
 });
 

@@ -272,7 +272,7 @@ Consulta de rastreabilidade
 Relatório e auditoria
 ```
 
-Os testes unitários não dependem de banco. Os testes de integração executam a jornada completa sobre a API, com o banco migrado e populado. Para testar à mão, use o Swagger em `/docs`.
+Os testes unitários não dependem de banco. Os testes de integração executam a jornada completa sobre a API num banco próprio (nome do banco + `_teste`), recriado e populado pelo seed a cada `npm test`; o banco do portal nunca recebe os registros criados pelos testes. Para testar à mão, use o Swagger em `/docs`.
 
 ### 9.1 Exportação em CSV
 
