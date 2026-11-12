@@ -2,11 +2,44 @@
 // Execução: npm run db:seed
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { ORGS_EXTRAS } from './dados-organizacoes';
 
 const prisma = new PrismaClient();
 
 const diasAtras = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 const emDias = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000);
+
+// Completa um CNPJ (8 dígitos de base) com a filial 0001 e os dígitos verificadores.
+function cnpjCompleto(base8: string): string {
+  const dv = (s: string, peso: number) => {
+    let soma = 0;
+    for (const ch of s) {
+      soma += Number(ch) * peso--;
+      if (peso < 2) peso = 9;
+    }
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  const base = `${base8}0001`;
+  const d1 = dv(base, 5);
+  return `${base}${d1}${dv(base + d1, 6)}`;
+}
+
+// IDs fixos das organizações extras (dados-organizacoes.ts) e dos lotes delas.
+const idOrgExtra = (i: number) => `00000000-0000-4000-8000-0000000001${String(i + 1).padStart(2, '0')}`;
+const idLoteExtra = (i: number) => `00000000-0000-4000-8000-0000000002${String(i + 1).padStart(2, '0')}`;
+
+// Observação registrada em cada passo do histórico do equipamento.
+const OBS_MOVIMENTO: Record<string, string> = {
+  AGUARDANDO_TRIAGEM: 'Recebimento do lote na central de triagem.',
+  EM_TRIAGEM: 'Equipamento conferido, etiquetado e encaminhado para a triagem.',
+  AGUARDANDO_DESMONTE: 'Triagem concluída: indicado para desmonte.',
+  EM_DESMONTE: 'Desmonte iniciado na bancada técnica.',
+  PECAS_REAPROVEITADAS: 'Peças em condições de uso separadas para reaproveitamento.',
+  MATERIAL_RECICLAVEL: 'Material separado por tipo e enviado à recicladora parceira.',
+  DESCARTE_SEGURO: 'Dados destruídos e descarte seguro realizado, com certificado emitido.',
+  BAIXA_DEFINITIVA: 'Destinação concluída e baixa definitiva registrada.'
+};
 
 // IDs fixos só para o seed ser repetível.
 const ID = {
@@ -35,11 +68,11 @@ const EXIGE_TROCA = process.env.SEED_EXIGE_TROCA === 'true';
 
 async function usuarios() {
   const lista = [
-    { usuario: 'superusuario', nome: 'Superusuário', senha: 'Super@123', papel: 'SUPERUSUARIO' },
-    { usuario: 'admin', nome: 'Administrador', senha: 'Admin@123', papel: 'ADMINISTRADOR' },
-    { usuario: 'operador', nome: 'Operador de Cadastro', senha: 'Operador@123', papel: 'OPERADOR_CADASTRO' },
-    { usuario: 'gestor', nome: 'Gestor de Almoxarifado', senha: 'Gestor@123', papel: 'GESTOR_ALMOXARIFADO' },
-    { usuario: 'auditor', nome: 'Auditor', senha: 'Auditor@123', papel: 'AUDITOR' }
+    { usuario: 'superusuario', nome: 'Helena Vasconcelos Prado', senha: 'Super@123', papel: 'SUPERUSUARIO' },
+    { usuario: 'admin', nome: 'Ricardo Monteiro Lima', senha: 'Admin@123', papel: 'ADMINISTRADOR' },
+    { usuario: 'operador', nome: 'Juliana Freitas Andrade', senha: 'Operador@123', papel: 'OPERADOR_CADASTRO' },
+    { usuario: 'gestor', nome: 'Marcos Antônio Teixeira', senha: 'Gestor@123', papel: 'GESTOR_ALMOXARIFADO' },
+    { usuario: 'auditor', nome: 'Fernanda Carvalho Brito', senha: 'Auditor@123', papel: 'AUDITOR' }
   ] as const;
 
   for (const u of lista) {
@@ -58,7 +91,8 @@ async function organizacoes() {
       razaoSocial: 'Banco Horizonte S.A.',
       cnpj: '11222333000181',
       inscricaoEstadual: '110042490114',
-      enderecoCompleto: 'Av. Paulista, 1000 - São Paulo/SP',
+      enderecoCompleto: 'Av. Paulista, 1000, 12º andar - Bela Vista, São Paulo/SP - CEP 01310-100',
+      dataCadastro: diasAtras(400),
       telefone: '(11) 3000-1000',
       email: 'ti@bancohorizonte.example',
       contrato: { valor: '15000.00', venc: emDias(300), auto: true }
@@ -68,7 +102,8 @@ async function organizacoes() {
       razaoSocial: 'Hospital Vida Plena',
       cnpj: '45678912000155',
       inscricaoEstadual: 'ISENTO',
-      enderecoCompleto: 'Rua das Flores, 200 - Curitiba/PR',
+      enderecoCompleto: 'Rua das Flores, 200 - Centro, Curitiba/PR - CEP 80020-090',
+      dataCadastro: diasAtras(360),
       telefone: '(41) 3000-2000',
       email: 'suprimentos@vidaplena.example',
       contrato: { valor: '8200.50', venc: emDias(120), auto: false }
@@ -79,7 +114,8 @@ async function organizacoes() {
       razaoSocial: 'Universidade Federal Exemplo',
       cnpj: '98765432000198',
       inscricaoEstadual: 'ISENTO',
-      enderecoCompleto: 'Campus Central - Belo Horizonte/MG',
+      enderecoCompleto: 'Av. Antônio Carlos, 6627 - Pampulha, Belo Horizonte/MG - CEP 31270-901',
+      dataCadastro: diasAtras(320),
       telefone: '(31) 3000-3000',
       email: 'patrimonio@ufexemplo.example',
       contrato: null
@@ -90,7 +126,8 @@ async function organizacoes() {
       razaoSocial: 'Varejo Nova Era Comércio Ltda',
       cnpj: '33445566000186',
       inscricaoEstadual: '0623145870012',
-      enderecoCompleto: 'Rua Voluntários da Pátria, 455 - Porto Alegre/RS',
+      enderecoCompleto: 'Rua Voluntários da Pátria, 455 - Centro Histórico, Porto Alegre/RS - CEP 90030-003',
+      dataCadastro: diasAtras(280),
       telefone: '(51) 3000-4000',
       email: 'operacoes@novaera.example',
       contrato: { valor: '11750.00', venc: emDias(540), auto: true, assinatura: 150 }
@@ -101,13 +138,36 @@ async function organizacoes() {
       razaoSocial: 'Construtora Alicerce Ltda',
       cnpj: '55667788000186',
       inscricaoEstadual: '7980012345',
-      enderecoCompleto: 'Av. Sete de Setembro, 3200 - Salvador/BA',
+      enderecoCompleto: 'Av. Sete de Setembro, 3200 - Barra, Salvador/BA - CEP 40130-001',
+      dataCadastro: diasAtras(440),
       telefone: '(71) 3000-5000',
       email: 'administrativo@alicerce.example',
       ativo: false,
       contrato: { valor: '4300.00', venc: diasAtras(20), auto: false, assinatura: 385 }
     }
   ];
+
+  for (const [i, o] of ORGS_EXTRAS.entries()) {
+    const id = idOrgExtra(i);
+    await prisma.organizacao.upsert({
+      where: { id },
+      update: {},
+      create: {
+        id, razaoSocial: o.razaoSocial, cnpj: cnpjCompleto(o.cnpjBase), inscricaoEstadual: o.inscricaoEstadual,
+        enderecoCompleto: o.enderecoCompleto, telefone: o.telefone, email: o.email, ativo: o.ativo ?? true, dataCadastro: diasAtras(o.cadastro)
+      }
+    });
+    if (o.contrato) {
+      await prisma.contrato.upsert({
+        where: { organizacaoId: id },
+        update: {},
+        create: {
+          organizacaoId: id, dataAssinatura: diasAtras(o.contrato.assinatura), dataVencimento: emDias(o.contrato.venc),
+          clausulas: o.contrato.clausulas, valorMensal: o.contrato.valor, renovacaoAutomatica: o.contrato.auto
+        }
+      });
+    }
+  }
 
   for (const o of orgs) {
     const { contrato, ...dados } = o;
@@ -118,7 +178,7 @@ async function organizacoes() {
         update: {},
         create: {
           organizacaoId: o.id,
-          dataAssinatura: diasAtras('assinatura' in contrato ? contrato.assinatura : 60),
+          dataAssinatura: diasAtras(('assinatura' in contrato ? contrato.assinatura : undefined) ?? 300),
           dataVencimento: contrato.venc,
           clausulas: [
             'Coleta mensal programada de equipamentos eletrônicos.',
@@ -135,9 +195,9 @@ async function organizacoes() {
 
 async function lotesEEquipamentos() {
   const lotes = [
-    { id: ID.lote1, organizacaoId: ID.orgBanco, dias: 30, nf: 'NF-100001', transp: 'TransRapida', status: 'TRIAGEM_CONCLUIDA' },
-    { id: ID.lote2, organizacaoId: ID.orgHospital, dias: 10, nf: 'NF-100002', transp: 'LogVerde', status: 'EM_TRIAGEM' },
-    { id: ID.lote3, organizacaoId: ID.orgBanco, dias: 2, nf: 'NF-100003', transp: 'TransRapida', status: 'RECEBIDO' }
+    { id: ID.lote1, organizacaoId: ID.orgBanco, dias: 30, nf: 'NF-100001', transp: 'TransRápida Logística', status: 'TRIAGEM_CONCLUIDA', obs: 'Estações de trabalho e servidor da agência Paulista, substituídos na modernização do parque.' },
+    { id: ID.lote2, organizacaoId: ID.orgHospital, dias: 10, nf: 'NF-100002', transp: 'LogVerde Transportes', status: 'EM_TRIAGEM', obs: 'Impressora e roteador do setor de faturamento.' },
+    { id: ID.lote3, organizacaoId: ID.orgBanco, dias: 2, nf: 'NF-100003', transp: 'TransRápida Logística', status: 'RECEBIDO', obs: 'Notebook devolvido por colaborador e fonte retirada do rack de rede.' }
   ] as const;
 
   for (const l of lotes) {
@@ -151,7 +211,7 @@ async function lotesEEquipamentos() {
         notaFiscal: l.nf,
         transportadora: l.transp,
         statusProcessamento: l.status,
-        observacoes: 'Lote gerado pelo seed.'
+        observacoes: l.obs
       }
     });
   }
@@ -205,7 +265,7 @@ async function lotesEEquipamentos() {
           origem: 'CLIENTE',
           destino: 'AGUARDANDO_TRIAGEM',
           responsavel: 'gestor',
-          observacao: 'Recebimento do lote (seed).'
+          observacao: OBS_MOVIMENTO.AGUARDANDO_TRIAGEM
         }
       });
     }
@@ -317,22 +377,27 @@ const LOTE_11: Linha[] = [
 
 async function dadosAnaliticos() {
   const lotes = [
-    { id: ID.lote4, organizacaoId: ID.orgHospital, dias: 70, nf: 'NF-100004', transp: 'LogVerde', status: 'EM_TRIAGEM', itens: LOTE_4, base: 1, obs: 'Lote gerado pelo seed (massa para análises).' },
-    { id: ID.lote5, organizacaoId: ID.orgBanco, dias: 55, nf: 'NF-100005', transp: 'TransRapida', status: 'TRIAGEM_CONCLUIDA', itens: LOTE_5, base: 101, obs: 'Lote gerado pelo seed (massa para análises).' },
+    { id: ID.lote4, organizacaoId: ID.orgHospital, dias: 70, nf: 'NF-100004', transp: 'LogVerde Transportes', status: 'EM_TRIAGEM', itens: LOTE_4, base: 1, obs: 'Renovação dos computadores e impressoras da recepção e dos consultórios.' },
+    { id: ID.lote5, organizacaoId: ID.orgBanco, dias: 55, nf: 'NF-100005', transp: 'TransRápida Logística', status: 'TRIAGEM_CONCLUIDA', itens: LOTE_5, base: 101, obs: 'Servidores, rede e fontes do data center secundário desativado.' },
     { id: ID.lote6, organizacaoId: ID.orgVarejo, dias: 120, nf: 'NF-200101', transp: 'Rota Sul Cargas', status: 'FINALIZADO', itens: LOTE_6, base: 201, obs: 'Troca de parque das lojas da região metropolitana.' },
     { id: ID.lote7, organizacaoId: ID.orgVarejo, dias: 35, nf: 'NF-200102', transp: 'Rota Sul Cargas', status: 'EM_TRIAGEM', itens: LOTE_7, base: 301, obs: 'Equipamentos do centro de distribuição.' },
-    { id: ID.lote8, organizacaoId: ID.orgVarejo, dias: 1, nf: 'NF-200103', transp: 'LogVerde', status: 'RECEBIDO', itens: LOTE_8, base: 401, obs: 'Coleta agendada da loja Centro.' },
-    { id: ID.lote9, organizacaoId: ID.orgUniversidade, dias: 45, nf: 'NF-300201', transp: 'TransRapida', status: 'TRIAGEM_CONCLUIDA', itens: LOTE_9, base: 501, obs: 'Laboratórios de informática do bloco B.' },
-    { id: ID.lote10, organizacaoId: ID.orgHospital, dias: 4, nf: 'NF-100006', transp: 'LogVerde', status: 'RECEBIDO', itens: LOTE_10, base: 601, obs: 'Equipamentos da ala administrativa.' },
+    { id: ID.lote8, organizacaoId: ID.orgVarejo, dias: 1, nf: 'NF-200103', transp: 'LogVerde Transportes', status: 'RECEBIDO', itens: LOTE_8, base: 401, obs: 'Coleta agendada da loja Centro.' },
+    { id: ID.lote9, organizacaoId: ID.orgUniversidade, dias: 45, nf: 'NF-300201', transp: 'TransRápida Logística', status: 'TRIAGEM_CONCLUIDA', itens: LOTE_9, base: 501, obs: 'Laboratórios de informática do bloco B.' },
+    { id: ID.lote10, organizacaoId: ID.orgHospital, dias: 4, nf: 'NF-100006', transp: 'LogVerde Transportes', status: 'RECEBIDO', itens: LOTE_10, base: 601, obs: 'Equipamentos da ala administrativa.' },
     { id: ID.lote11, organizacaoId: ID.orgConstrutora, dias: 210, nf: 'NF-400301', transp: 'Expresso Nordeste', status: 'FINALIZADO', itens: LOTE_11, base: 701, obs: 'Último lote antes do encerramento do contrato.', ativo: false }
   ] as const;
 
-  for (const l of lotes) {
+  // Lotes das organizações extras (só as que têm lote em dados-organizacoes.ts).
+  const extras = ORGS_EXTRAS.flatMap((o, i) =>
+    o.lote ? [{ id: idLoteExtra(i), organizacaoId: idOrgExtra(i), dias: o.lote.dias, nf: o.lote.nf, transp: o.lote.transp, status: o.lote.status, itens: o.lote.itens, base: 801 + i * 5, obs: o.lote.obs, ativo: o.ativo ?? true }] : []
+  );
+
+  for (const l of [...lotes, ...extras]) {
     const entrada = diasAtras(l.dias);
     await prisma.lote.upsert({
       where: { id: l.id },
       update: {},
-      create: { id: l.id, organizacaoId: l.organizacaoId, dataEntrada: entrada, notaFiscal: l.nf, transportadora: l.transp, statusProcessamento: l.status, observacoes: l.obs, ativo: 'ativo' in l ? l.ativo : true }
+      create: { id: l.id, organizacaoId: l.organizacaoId, dataEntrada: entrada, notaFiscal: l.nf, transportadora: l.transp, statusProcessamento: l.status as never, observacoes: l.obs, ativo: 'ativo' in l ? l.ativo : true }
     });
 
     for (const [i, [tipo, marca, modelo, ano, estado, peso, status]] of l.itens.entries()) {
@@ -351,7 +416,7 @@ async function dadosAnaliticos() {
       for (const [k, passo] of passos.entries()) {
         if (k > 0) momento += (6 + ((l.base + i + k * 7) % 25)) * 60 * 60 * 1000;
         await prisma.movimentacao.create({
-          data: { equipamentoId: idCompleto, dataHora: new Date(momento), origem: passo.origem || anterior, destino: passo.destino, responsavel: 'gestor', observacao: 'Movimentação gerada pelo seed.' }
+          data: { equipamentoId: idCompleto, dataHora: new Date(momento), origem: passo.origem || anterior, destino: passo.destino, responsavel: 'gestor', observacao: OBS_MOVIMENTO[passo.destino] }
         });
         anterior = passo.destino;
       }
@@ -362,15 +427,17 @@ async function dadosAnaliticos() {
 // Histórico de auditoria (journal) do cadastro inicial, para a tela de Auditoria já ter o que mostrar.
 // Idempotente: só grava para registros que ainda não têm nenhuma linha no journal.
 async function auditoriaInicial() {
-  const orgs = await prisma.organizacao.findMany({ where: { id: { in: [ID.orgBanco, ID.orgHospital, ID.orgUniversidade, ID.orgVarejo, ID.orgConstrutora] } } });
-  const lotes = await prisma.lote.findMany({ where: { id: { in: [ID.lote1, ID.lote2, ID.lote3, ID.lote4, ID.lote5, ID.lote6, ID.lote7, ID.lote8, ID.lote9, ID.lote10, ID.lote11] } } });
+  const idsOrgs = [ID.orgBanco, ID.orgHospital, ID.orgUniversidade, ID.orgVarejo, ID.orgConstrutora, ...ORGS_EXTRAS.map((_, i) => idOrgExtra(i))];
+  const idsLotes = [ID.lote1, ID.lote2, ID.lote3, ID.lote4, ID.lote5, ID.lote6, ID.lote7, ID.lote8, ID.lote9, ID.lote10, ID.lote11, ...ORGS_EXTRAS.flatMap((o, i) => (o.lote ? [idLoteExtra(i)] : []))];
+  const orgs = await prisma.organizacao.findMany({ where: { id: { in: idsOrgs } } });
+  const lotes = await prisma.lote.findMany({ where: { id: { in: idsLotes } } });
   const semJournal = async (entidadeId: string) => (await prisma.journalTransacao.count({ where: { entidadeId } })) === 0;
   const json = (v: unknown) => JSON.parse(JSON.stringify(v));
 
-  for (const [i, o] of orgs.entries()) {
+  for (const o of orgs) {
     if (!(await semJournal(o.id))) continue;
     await prisma.journalTransacao.create({
-      data: { timestamp: diasAtras(400 - i * 40), operacao: 'CRIAR', entidade: 'Organizacao', entidadeId: o.id, dadosDepois: json({ ...o, ativo: true }), usuarioResponsavel: 'operador' }
+      data: { timestamp: o.dataCadastro, operacao: 'CRIAR', entidade: 'Organizacao', entidadeId: o.id, dadosDepois: json({ ...o, ativo: true }), usuarioResponsavel: 'operador' }
     });
     if (!o.ativo) {
       await prisma.journalTransacao.create({
@@ -397,7 +464,10 @@ async function main() {
   await lotesEEquipamentos();
   await dadosAnaliticos();
   await auditoriaInicial();
-  console.log('Seed concluído: 5 usuários, 5 organizações (1 inativa), 11 lotes, 63 equipamentos.');
+  const [nUsuarios, nOrgs, nInativas, nLotes, nEquip] = await Promise.all([
+    prisma.usuario.count(), prisma.organizacao.count(), prisma.organizacao.count({ where: { ativo: false } }), prisma.lote.count(), prisma.equipamento.count()
+  ]);
+  console.log(`Seed concluído: ${nUsuarios} usuários, ${nOrgs} organizações (${nInativas} inativas), ${nLotes} lotes, ${nEquip} equipamentos.`);
   console.log('Logins: superusuario/Super@123, admin/Admin@123, operador/Operador@123, gestor/Gestor@123, auditor/Auditor@123');
 }
 
