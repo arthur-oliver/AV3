@@ -152,7 +152,7 @@ Entre as principais validações estão:
 * exclusão em cadeia: excluir uma organização remove contrato, lotes, equipamentos e movimentações; excluir um lote remove seus equipamentos; equipamento e contrato só têm exclusão definitiva;
 * lote só é criado em organização ativa e com contrato ativo (vigente);
 * equipamento com baixa definitiva ou de lote finalizado não é editado;
-* conta de usuário com histórico não é excluída (apenas desativada).
+* conta de usuário pode ser excluída pelo superusuário mesmo com histórico: os registros de auditoria guardam o login em texto e continuam; a exclusão é gravada no journal.
 
 Essas validações são concentradas nos validadores, regras e serviços para que possam ser reutilizadas por outras interfaces.
 

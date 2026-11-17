@@ -19,7 +19,8 @@ type Responsavel = { id: string; usuario: string };
 //  - o superusuário é único: ninguém cria, atribui, rebaixa, desativa ou exclui esse papel;
 //  - sempre sobra ao menos 1 usuário ATIVO em cada papel essencial (administrador, operador, gestor);
 //  - ninguém desativa, exclui ou muda o próprio papel (evita se trancar para fora por engano);
-//  - quem já operou o sistema (tem histórico) não é excluído, apenas desativado: a auditoria continua íntegra;
+//  - o superusuário pode excluir qualquer outra conta, mesmo com histórico: journal e movimentações guardam o login em
+//    texto (sem chave estrangeira), então os registros continuam íntegros e legíveis depois da exclusão;
 //  - o login (nome de usuário) não muda, pois ele identifica o responsável nos registros históricos.
 export class UsuarioServico {
   constructor(private readonly usuarios = new UsuarioRepositorio()) {}
@@ -161,7 +162,9 @@ export class UsuarioServico {
     controleLogin.registrarSucesso(login); // redefinir a senha também libera um login bloqueado por tentativas
   }
 
-  // Só exclui contas sem histórico (ex.: criadas por engano). Para as demais, use a desativação.
+  // Exclui a conta mesmo que ela tenha histórico: os registros de auditoria permanecem com o login em texto,
+  // e a própria exclusão é gravada no journal com os dados que a conta tinha. Desativar continua disponível
+  // para quem só quer bloquear o acesso.
   async excluir(id: string, responsavel: Responsavel): Promise<void> {
     if (id === responsavel.id) throw new RegraNegocio('Você não pode excluir a sua própria conta.');
 
@@ -173,12 +176,6 @@ export class UsuarioServico {
       if (atual.ativo) {
         const ativos = await this.usuarios.bloquearAtivosDoPapel(atual.papel, tx);
         exigirContinuidadeDoPapel(atual.papel, ativos, id, 'excluir este usuário');
-      }
-      const historico = await this.usuarios.contarHistorico(atual.usuario, tx);
-      if (historico > 0) {
-        throw new RegraNegocio(
-          `O usuário "${atual.usuario}" possui ${historico} registro(s) de histórico e não pode ser excluído. Desative a conta para bloquear o acesso e preservar a auditoria.`
-        );
       }
       const antes = (await this.usuarios.buscarPublicoPorId(id, tx))!;
       await this.usuarios.excluir(id, tx);

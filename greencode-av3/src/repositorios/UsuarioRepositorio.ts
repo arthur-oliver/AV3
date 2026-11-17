@@ -72,16 +72,6 @@ export class UsuarioRepositorio {
     return linhas.map((l) => l.id);
   }
 
-  // Quantas vezes o login aparece no histórico (journal e movimentações de equipamentos).
-  // Quem já operou o sistema não pode ser excluído: o histórico de auditoria precisa continuar válido.
-  async contarHistorico(login: string, tx: Cliente = prisma): Promise<number> {
-    const [journal, movimentacoes] = await Promise.all([
-      tx.journalTransacao.count({ where: { usuarioResponsavel: login } }),
-      tx.movimentacao.count({ where: { responsavel: login } })
-    ]);
-    return journal + movimentacoes;
-  }
-
   excluir(id: string, tx: Cliente = prisma) {
     return tx.usuario.delete({ where: { id } });
   }

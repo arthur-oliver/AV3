@@ -130,7 +130,7 @@ export async function rotasUsuarios(app: FastifyInstance): Promise<void> {
       preHandler: soSuper,
       schema: {
         tags: TAG,
-        summary: 'Exclui um usuário SEM histórico (superusuário). Quem já operou o sistema deve ser apenas desativado',
+        summary: 'Exclui um usuário (superusuário), mesmo com histórico: os registros de auditoria continuam. Para só bloquear o acesso, use a desativação',
         security: seguranca,
         params: idParam
       }

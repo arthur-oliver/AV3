@@ -132,7 +132,7 @@ um erro de digitação** e **desfazer um cadastro feito por engano**. A regra ad
 | Lote | nota fiscal, transportadora, observações; data de entrada só antes da triagem (regra dos 90 dias continua valendo) | sim: o lote e seus equipamentos ficam só para consulta | sim, em qualquer status, levando equipamentos e movimentações |
 | Equipamento | tipo, marca, modelo, ano, peso (nunca o código de barras, que é o próprio id); status e estado físico têm rotas próprias, com justificativa | não (é tratado como inativo quando o lote está inativo) | sim, em qualquer fase |
 | Contrato | substituir/renovar | não | sim; sem contrato ativo a organização deixa de receber novos lotes |
-| Usuário | papel; senha (redefinida pelo superusuário); nome | desativar | só sem histórico; senão, desativar |
+| Usuário | papel; senha (redefinida pelo superusuário); nome | desativar | sim, mesmo com histórico (a auditoria guarda o login em texto); desativar bloqueia o acesso sem apagar |
 
 **Soft delete.** Organização e lote ganham a marca `ativo`. Inativar não apaga nada: o registro continua no banco e na
 auditoria, mas deixa de aceitar alterações (422) até ser reativado. Inativar a organização desce em cadeia para todos

@@ -134,14 +134,20 @@ describe('usuários: gestão de contas', () => {
     expect((await api.tentarLogin(u.usuario, SENHA)).statusCode).toBe(200);
   });
 
-  it('exclui apenas contas sem histórico', async () => {
-    // Com histórico: já fez login, então só pode ser desativado.
+  it('exclui qualquer conta, inclusive com histórico, sem perder a auditoria', async () => {
+    // Com histórico: já aparece nos registros de auditoria.
     const usado = await criarUsuario('AUDITOR', 'usado');
     await api.login(usado.usuario, SENHA);
-    const negado = await req(tokens.super, 'DELETE', `/api/v1/admin/usuarios/${usado.id}`);
-    expect(negado.statusCode).toBe(422);
-    expect(negado.json().mensagem).toContain('histórico');
-    expect((await buscarUsuario(usado.id)).id).toBe(usado.id);
+    await prisma.journalTransacao.create({
+      data: { operacao: 'ATUALIZAR', entidade: 'Lote', entidadeId: usado.id, usuarioResponsavel: usado.usuario }
+    });
+    const excluido = await req(tokens.super, 'DELETE', `/api/v1/admin/usuarios/${usado.id}`);
+    expect(excluido.statusCode).toBe(204);
+    expect((await req(tokens.super, 'GET', `/api/v1/admin/usuarios/${usado.id}`)).statusCode).toBe(404);
+    expect((await api.tentarLogin(usado.usuario, SENHA)).statusCode).toBe(401);
+    // O histórico continua com o login e a exclusão ficou registrada.
+    expect(await prisma.journalTransacao.count({ where: { usuarioResponsavel: usado.usuario, entidade: 'Lote' } })).toBe(1);
+    expect(await prisma.journalTransacao.count({ where: { entidade: 'Usuario', entidadeId: usado.id, operacao: 'EXCLUIR' } })).toBe(1);
 
     // Sem histórico: criada e nunca usada.
     const novo = await criarUsuario('AUDITOR', 'novo');

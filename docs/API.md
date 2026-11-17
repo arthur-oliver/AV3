@@ -80,7 +80,7 @@ As rotas descritas nas seções abaixo, de "Sistema e autenticação" a "Relató
 | PUT | `/usuarios/:id` | S | `{papel, versao}` — troca o papel (vale na hora, mesmo com token antigo) |
 | PATCH | `/usuarios/:id/ativo` | S | `{ativo}` — ativa ou desativa a conta |
 | POST | `/usuarios/:id/redefinir-senha` | S | `{novaSenha}` — também libera um login bloqueado por tentativas |
-| DELETE | `/usuarios/:id` | S | Exclui só conta **sem histórico** (nunca usou o sistema); as demais devem ser desativadas |
+| DELETE | `/usuarios/:id` | S | Exclui a conta, mesmo com histórico (os registros de auditoria guardam o login em texto e continuam); desativar segue disponível para só bloquear o acesso |
 
 ### Organizações e contratos
 
@@ -158,7 +158,7 @@ Ir para `AGUARDANDO_DESMONTE`/`EM_DESMONTE` só é permitido quando o lote já c
 | Sempre existe ao menos **1 usuário ativo** em cada papel essencial: `ADMINISTRADOR`, `OPERADOR_CADASTRO` e `GESTOR_ALMOXARIFADO` (o `AUDITOR` só consulta e pode ficar vazio). Vale para desativar, excluir e trocar o papel | 422 |
 | Ninguém desativa, exclui nem troca o próprio papel | 422 |
 | O papel usado nas permissões é o do banco, não o do token: trocar ou desativar tem efeito imediato | 403 / 401 |
-| Conta que já operou o sistema (tem histórico de auditoria) só pode ser desativada | 422 |
+| Excluir um usuário não apaga o histórico dele: journal e movimentações mantêm o login; a exclusão fica registrada no journal | — |
 | Lote só é criado em organização **ativa** e com **contrato ativo** (vigente) | 422 |
 | Lote inativo (soft delete) e seus equipamentos ficam só para consulta até a reativação; um lote só é reativado com a organização ativa | 422 |
 | 5 senhas erradas seguidas para o mesmo login bloqueiam novas tentativas por 15 minutos | 429 |

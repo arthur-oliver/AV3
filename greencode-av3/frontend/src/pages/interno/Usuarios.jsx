@@ -31,7 +31,7 @@ export default function Usuarios() {
         {outro && <Botao mini variante="sec" onClick={() => { if (!u.ativo || confirmar(`Desativar ${u.usuario}? Ele não conseguirá mais entrar.`)) agir(A(`/usuarios/${u.id}/ativo`), 'PATCH', { ativo: !u.ativo }, u.ativo ? 'Usuário desativado' : 'Usuário ativado'); }}>{u.ativo ? 'Desativar' : 'Ativar'}</Botao>}
         {outro && <Botao mini variante="sec" onClick={() => setModal({ tipo: 'senha', u })}>Nova senha</Botao>}
         {!outro && <Botao mini variante="sec" onClick={() => ir('conta')}>Alterar minha senha</Botao>}
-        {outro && u.papel !== 'SUPERUSUARIO' && <Botao mini variante="perigo" onClick={() => { if (confirmar(`Excluir ${u.usuario} de vez? Só é possível se ele nunca operou o sistema; caso contrário, desative.`)) agir(A(`/usuarios/${u.id}`), 'DELETE', undefined, 'Usuário excluído'); }}>Excluir</Botao>}
+        {outro && u.papel !== 'SUPERUSUARIO' && <Botao mini variante="perigo" onClick={() => { if (confirmar(`Excluir ${u.usuario} de vez? Não dá para desfazer. O histórico dele continua nos registros de auditoria. Para só bloquear o acesso, use Desativar.`)) agir(A(`/usuarios/${u.id}`), 'DELETE', undefined, 'Usuário excluído'); }}>Excluir</Botao>}
       </span>
     );
   };
